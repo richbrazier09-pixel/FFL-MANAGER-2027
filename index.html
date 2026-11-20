@@ -217,7 +217,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
 <script>
 let players = [];
 
-window.updatePlayersFromFirebase = function() {
+window.updatePlayersFromFirebase = function() };
   if (!window.fflPlayers || window.fflPlayers.length === 0) {
     console.warn("Firebase player database is not loaded yet.");
     return;
