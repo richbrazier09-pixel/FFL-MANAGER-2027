@@ -215,7 +215,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
 <footer>FFL MANAGER 2027 · Unofficial football management game</footer>
 
 <script>
-  var players = [];
+  let players = [];
 
   window.updatePlayersFromFirebase = function() {
     if (!window.fflPlayers || window.fflPlayers.length === 0) {
