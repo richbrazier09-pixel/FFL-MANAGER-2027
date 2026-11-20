@@ -62,6 +62,49 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
   <small>Build your club. Build your legacy.</small>
 </header>
 <nav id="nav">
+  <div id="accountBar" style="padding:15px;text-align:center;background:#10251f;border-bottom:1px solid #c9a64b;">
+  <button id="googleSignIn" style="padding:12px 22px;background:#d4af37;color:#101820;border:0;border-radius:8px;font-weight:bold;cursor:pointer;">
+    Sign in with Google
+  </button>
+  <span id="accountStatus" style="color:white;margin-left:12px;"></span>
+  <button id="googleSignOut" style="display:none;padding:10px 16px;margin-left:10px;">
+    Sign out
+  </button>
+</div>
+
+<script>
+  const signInButton = document.getElementById("googleSignIn");
+  const signOutButton = document.getElementById("googleSignOut");
+  const accountStatus = document.getElementById("accountStatus");
+
+  signInButton.addEventListener("click", async () => {
+    try {
+      await window.fflFirebase.signIn();
+    } catch (error) {
+      alert("Sign-in failed: " + error.message);
+    }
+  });
+
+  signOutButton.addEventListener("click", async () => {
+    try {
+      await window.fflFirebase.signOut();
+    } catch (error) {
+      alert("Sign-out failed: " + error.message);
+    }
+  });
+
+  window.fflFirebase.onAuthStateChanged(user => {
+    if (user) {
+      accountStatus.textContent = "Welcome, " + (user.displayName || user.email);
+      signInButton.style.display = "none";
+      signOutButton.style.display = "inline-block";
+    } else {
+      accountStatus.textContent = "";
+      signInButton.style.display = "inline-block";
+      signOutButton.style.display = "none";
+    }
+  });
+</script>
   <button class="active" data-page="home">Home</button>
   <button data-page="club">My Club</button>
   <button data-page="packs">Packs</button>
