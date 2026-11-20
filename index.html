@@ -266,6 +266,10 @@ function makeCard(player,tier){
  return {id:Date.now()+Math.random(),name:player[0],position:player[1],tier};
 }
 function openPack(){
+   if(players.length===0){
+   document.getElementById("packMessage").textContent="Player database is still loading. Please try again shortly.";
+   return;
+ }
  if(state.packs<=0){document.getElementById("packMessage").textContent="No free packs left today in this demo.";return}
  state.packs--;
  let r=Math.random()*100,tier=r<65?"bronze":r<90?"silver":"gold";
@@ -286,6 +290,10 @@ function renderCards(){
  document.getElementById("collectionEmpty").classList.toggle("hidden",state.cards.length>0);
 }
 function exchangeGold(){
+   if(players.length===0){
+   document.getElementById("exchangeMessage").textContent="Player database is still loading. Please try again shortly.";
+   return;
+ }
  let gold=state.cards.filter(c=>c.tier==="gold");
  if(gold.length<5){document.getElementById("exchangeMessage").textContent="You need 5 Gold cards. You currently have "+gold.length+".";return}
  let player=players[Math.floor(Math.random()*players.length)];
