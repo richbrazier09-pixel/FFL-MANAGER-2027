@@ -1144,7 +1144,21 @@ function getFatigueRate(name){
     if(roll<0.12){
       addEvent(time,`${team} build patiently and look for an opening.`);
     }else if(roll<0.21){
-      addEvent(time,`${team} work the ball wide and deliver a dangerous cross.`);
+  if(!home){
+    addEvent(time,`${team} work the ball wide and deliver a dangerous cross.`);
+  }else{
+    const passer = choose(mids,creator);
+    const passingSuccess = Math.min(
+      0.95,
+      0.75 * getActionMultiplier(passer,"passing")
+    );
+
+    if(Math.random() < passingSuccess){
+      addEvent(time,`${passer} picks out a dangerous pass. ${scorer} receives the ball.`);
+    }else{
+      addEvent(time,`${passer} attempts a pass but the opposition intercepts.`);
+    }
+  }
     }else if(roll<0.29){
       addEvent(time,`${scorer} gets a sight of goal but fires narrowly wide.`);
       if(home) stats[scorer].shots++;
