@@ -381,6 +381,67 @@ onAuthStateChanged(auth, user => {
 console.log("FFL Manager Firebase connected!");
 
 let activeUser = null;
+    const ADMIN_UID = "PASTE_YOUR_UID_HERE";
+
+const playerDatabase = [
+  {id:"rich-brazier",name:"Rich Brazier",position:"CAM",traits:["Shooting","Passing","Dribbling","Heading"]},
+  {id:"tom-brazier",name:"Tom Brazier",position:"CM/CDM",traits:["Strength","Stamina","Tackling","Heading"]},
+  {id:"james-drake",name:"James Drake",position:"GK",traits:["Positioning","Aerial Reach"]},
+  {id:"jamie-wolff",name:"Jamie Wolff",position:"CAM",traits:["Pace","Long Shots"]},
+  {id:"adam-pace",name:"Adam Pace",position:"ST",traits:["Stamina","First Touch"]},
+  {id:"neil-russell",name:"Neil Russell",position:"CM",traits:["Teamwork","Positioning"]},
+  {id:"mikey-williams",name:"Mikey Williams",position:"CB",traits:["Strength","Heading"]},
+  {id:"tom-white",name:"Tom White",position:"CB",traits:["Positioning","Tackling","Marking","Passing"]},
+  {id:"sam-at",name:"Sam AT",position:"CM",traits:["Dribbling","Passing","Tackling","Stamina"]},
+  {id:"richie-price",name:"Richie Price",position:"WB",traits:["Determination","Composure"]},
+  {id:"liam-white",name:"Liam White",position:"ST",traits:["Shooting","Passing"]},
+  {id:"rasheed-agboola",name:"Rasheed Agboola",position:"ST/WB",traits:["Pace","Dribbling"]},
+  {id:"adam-prior",name:"Adam Prior",position:"CB",traits:["Composure","Marking"]},
+  {id:"owen-florence",name:"Owen Florence",position:"CM",traits:["Determination","Dribbling"]},
+  {id:"steve-parker",name:"Steve Parker",position:"CM/CB",traits:["Composure","Work Rate","Passing","Positioning"]},
+  {id:"jerry-osh",name:"Jerry Osholaja",position:"CB",traits:["Strength","Tackling","Heading"]},
+  {id:"nath-tam",name:"Nath Tam",position:"WB/ST",traits:["Pace","Dribbling","Work Rate"]},
+  {id:"jason-peng",name:"Jason Peng",position:"WB/ST",traits:["Pace","Dribbling","Work Rate"]},
+  {id:"jamie-crewe",name:"Jamie Crewe",position:"ST",traits:["Pace","Shooting","First Touch"]},
+  {id:"nigel-tam",name:"Nigel Tam",position:"WB/CM",traits:["Work Rate","Stamina"]},
+  {id:"sammi-davies",name:"Sammi Davies",position:"ST/WB",traits:["Pace","Work Rate"]},
+  {id:"sam-dj",name:"Sam DJ",position:"CB/WB",traits:["Tackling","Work Rate","Stamina"]},
+  {id:"stephen-lovelady",name:"Stephen Lovelady",position:"CM",traits:["Determination","Stamina"]},
+  {id:"tom-stanners",name:"Tom Stanners",position:"CM/WB",traits:["Composure","Passing","First Touch"]},
+  {id:"jack-hall",name:"Jack Hall",position:"CB/WB",traits:["Composure"]},
+  {id:"connor-drake",name:"Connor Drake",position:"GK",traits:["Diving","Reflexes","Ball Handling"]},
+  {id:"lewis-gillam",name:"Lewis Gillam",position:"WB",traits:["Pace","Positioning","Work Rate"]},
+  {id:"luke-cowling",name:"Luke Cowling",position:"CB",traits:["Marking","Strength"]},
+  {id:"jj-hall",name:"JJ HALL",position:"GK",traits:["One on Ones","Goal Kicks"]},
+  {id:"nicol-tam",name:"Nicol Tam",position:"WB/CM",traits:["Work Rate","Tackling"]},
+  {id:"kwok-leung",name:"Kwok Leung",position:"ST/WB",traits:["Determination"]},
+  {id:"rob-hughes",name:"Rob Hughes",position:"CB",traits:["Tackling"]},
+  {id:"mark-prankerd",name:"Mark Prankerd",position:"ST",traits:["Work Rate","Strength"]}
+];
+
+window.importFFLPlayers = async function() {
+  if (!activeUser || activeUser.uid !== ADMIN_UID) {
+    alert("Admin access only.");
+    return;
+  }
+
+  if (!confirm("Import all 33 players into Firestore? Existing player records will be updated.")) return;
+
+  try {
+    for (const player of playerDatabase) {
+      const { id, ...data } = player;
+      await setDoc(doc(db, "players", id), {
+        ...data,
+        active: true
+      }, { merge: true });
+    }
+
+    alert("Successfully imported all 33 players!");
+  } catch (error) {
+    console.error(error);
+    alert("Import failed: " + error.message);
+  }
+};
 let cloudReady = false;
 
 window.fflSaveCloud = async function(){
