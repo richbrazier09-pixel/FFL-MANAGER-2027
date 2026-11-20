@@ -315,16 +315,24 @@ function renderSquad(){
  let cap=document.getElementById("captain");
  cap.innerHTML='<option value="">Choose captain</option>'+owned.map(n=>`<option ${state.captain===n?"selected":""}>${n}</option>`).join("");
  let formation=document.getElementById("formation").value;
- let lines=formation.split("-").map(Number);
- let names=state.squad.slice(0,11);
- let html='<div class="pitch-line"><div class="pitch-player">GK</div></div>';
- let i=0;
- lines.slice().reverse().forEach((count,index)=>{
- let row=[];for(let j=0;j<count;j++){row.push(names[i++]||"Empty slot")}
- html+='<div class="pitch-line">'+row.map(n=>`<div class="pitch-player">${n}</div>`).join("")+'</div>';
- });
- document.getElementById("pitch").innerHTML=html;
-}
+let lines=formation.split("-").map(Number);
+let names=state.squad.slice(0,11);
+let html="";
+let i=0;
+
+lines.slice().reverse().forEach(count=>{
+ let row=[];
+ for(let j=0;j<count;j++){
+   row.push(names[i++]||"Empty slot");
+ }
+ html+='<div class="pitch-line">'+
+ row.map(n=>`<div class="pitch-player">${n}</div>`).join("")+
+ '</div>';
+});
+
+html+='<div class="pitch-line"><div class="pitch-player">GK</div></div>';
+
+document.getElementById("pitch").innerHTML=html;
 function toggleSquad(name){
  if(state.squad.includes(name))state.squad=state.squad.filter(n=>n!==name);
  else if(state.squad.length<11)state.squad.push(name);
