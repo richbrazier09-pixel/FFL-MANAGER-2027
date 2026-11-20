@@ -1204,7 +1204,21 @@ function getFatigueRate(name){
       if(Math.random()<0.72) addGoal(home,scorer,creator,"converts the penalty");
       else addEvent(time,`PENALTY SAVED! The goalkeeper makes a huge stop.`);
     }else if(roll<0.64){
-      addEvent(time,`${team} win possession and launch a quick counter-attack.`);
+  if(!home){
+    addEvent(time,`${team} win possession and launch a quick counter-attack.`);
+  }else{
+    const dribbler = choose(attack,choose(mids,scorer));
+    const dribbleSuccess = Math.min(
+      0.95,
+      0.75 * getActionMultiplier(dribbler,"dribbling")
+    );
+
+    if(Math.random() < dribbleSuccess){
+      addEvent(time,`${dribbler beats a defender with a clever dribble and starts a counter-attack.`);
+    }else{
+      addEvent(time,`${dribbler tries to beat a defender but loses possession.`);
+    }
+  }
     }else if(roll<0.66){
       const booked = home
         ? choose([...defence,...mids],"Your player")
