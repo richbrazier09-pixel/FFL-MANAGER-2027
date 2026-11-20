@@ -101,6 +101,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
   <button class="active" data-page="home">Home</button>
   <button data-page="club">My Club</button>
   <button data-page="packs">Packs</button>
+  <button data-page="shop">Shop</button>
   <button data-page="squad">Squad</button>
   <button data-page="collection">Cards</button>
   <button data-page="matches">Matches</button>
@@ -165,6 +166,71 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
     <p id="exchangeMessage"></p>
   </div>
 </section>
+  
+<section id="shop" class="hidden">
+  <h1>Club Shop</h1>
+  <p>Spend your club coins on packs and match-day power-ups.</p>
+
+  <div class="stats">
+    <div class="stat">
+      <strong id="shopCoins">0</strong>
+      <small>Club coins</small>
+    </div>
+    <div class="stat">
+      <strong id="shopPacks">0</strong>
+      <small>Normal packs</small>
+    </div>
+    <div class="stat">
+      <strong id="shopPowerUps">0</strong>
+      <small>Power-ups owned</small>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Normal Player Pack</h2>
+    <p>Contains one player card.</p>
+    <p class="notice">Bronze 80% · Silver 19% · Gold 1%</p>
+    <strong>100 coins</strong>
+    <br>
+    <button class="primary" onclick="buyNormalPack()">
+      Buy normal pack
+    </button>
+    <p id="shopPackMessage"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Match-day Power-ups</h2>
+    <p>Buy power-ups to use during your matches.</p>
+
+    <div class="squad-row">
+      <span>Super Sub — 250 coins</span>
+      <button class="secondary" onclick="buyPowerUp('superSub',250)">Buy</button>
+    </div>
+
+    <div class="squad-row">
+      <span>Adrenaline — 250 coins</span>
+      <button class="secondary" onclick="buyPowerUp('adrenaline',250)">Buy</button>
+    </div>
+
+    <div class="squad-row">
+      <span>Defensive Lock — 250 coins</span>
+      <button class="secondary" onclick="buyPowerUp('defensiveLock',250)">Buy</button>
+    </div>
+
+    <div class="squad-row">
+      <span>Dead Ball Specialist — 250 coins</span>
+      <button class="secondary" onclick="buyPowerUp('deadBallSpecialist',250)">Buy</button>
+    </div>
+
+    <p id="shopPowerMessage"></p>
+  </div>
+
+  <div class="panel">
+    <h2>Your Power-up Inventory</h2>
+    <div id="shopInventory"></div>
+  </div>
+</section>
+
 
 <section id="squad" class="hidden">
   <h1>Squad Builder</h1>
