@@ -850,6 +850,12 @@ function getFatigueRate(name){
 
   return 1 - fatigue;
 }
+  function getActionMultiplier(name, trait){
+  const traitBoost = getTraitBoost(name, trait);
+  const fitness = getPlayerFitness(name);
+
+  return (1 + traitBoost) * fitness;
+}
 
   function awardRating(name,amount){
     if(!name || !ratings[name]) return;
@@ -1150,9 +1156,17 @@ function getFatigueRate(name){
     }else if(roll<0.42){
       addEvent(time,`The ball strikes the post! ${team} are inches away.`);
     }else if(roll<0.49){
-      addGoal(home,scorer,creator,"finishes a flowing move");
-    }else if(roll<0.53){
-      addGoal(home,scorer,creator,"powers home a header from a corner");
+  if(!home || Math.random() < getActionMultiplier(scorer,"shooting")){
+    addGoal(home,scorer,creator,"finishes a flowing move");
+  }else{
+    addEvent(time,`${scorer} gets the chance but cannot quite find the finish.`);
+  }
+}else if(roll<0.53){
+  if(!home || Math.random() < getActionMultiplier(scorer,"heading")){
+    addGoal(home,scorer,creator,"powers home a header from a corner");
+  }else{
+    addEvent(time,`${scorer} rises for the header but sends it wide.`);
+  }
     }else if(roll<0.56){
       addEvent(time,`🚩 Corner for ${team}. The delivery causes problems.`);
       if(powerEffects.deadBall && home && Math.random()<0.3){
