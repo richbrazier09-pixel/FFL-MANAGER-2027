@@ -680,7 +680,12 @@ function playMatch(){
   const originalLineup = (state.lineup || []).slice(0,11);
   const activePlayers = originalLineup.filter(Boolean);
   const playerData = name => {
-  const card = state.cards.find(c => c.name === name);
+  const card = state.cards
+  .filter(c => c.name === name)
+  .sort((a,b) => {
+    const tierRank = {bronze:0,silver:1,gold:2,inform:3};
+    return (tierRank[b.tier] || 0) - (tierRank[a.tier] || 0);
+  })[0];
   const player = players.find(p => p[0] === name);
 
   return {
