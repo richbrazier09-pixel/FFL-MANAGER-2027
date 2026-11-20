@@ -541,10 +541,12 @@ window.fflSaveCloud = async function(){
   try {
     const clubRef = doc(db, "clubs", activeUser.uid);
 
-    await setDoc(clubRef, {
-      ...window.fflState,
-      updatedAt: new Date().toISOString()
-    });
+   const cleanData = JSON.parse(JSON.stringify({
+  ...window.fflState,
+  updatedAt: new Date().toISOString()
+}));
+
+await setDoc(clubRef, cleanData);
 
     localStorage.setItem("ffl2027owner", activeUser.uid);
     console.log("Club saved to cloud!");
