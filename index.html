@@ -409,6 +409,7 @@ function toggleSquad(name){
 
 let activeMatchTimer = null;
 
+
 function playMatch(){
   if(activeMatchTimer){
     clearInterval(activeMatchTimer);
@@ -425,14 +426,16 @@ function playMatch(){
 
   const formation = document.getElementById("formation").value;
   const rows = formation.split("-").map(Number);
-
-  // Formation slots: attackers, midfielders, defenders, goalkeeper.
   const expected = [
     ...Array(rows[2]).fill("ATT"),
     ...Array(rows[1]).fill("MID"),
     ...Array(rows[0]).fill("DEF"),
     "GK"
   ];
+
+  const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
 
   function positionGroups(position){
     return String(position || "").toUpperCase().split("/").map(p => {
@@ -444,302 +447,561 @@ function playMatch(){
     });
   }
 
-  const lineup = (state.lineup || []).filter(Boolean);
-  const starters = lineup.length;
-  let outOfPosition = 0;
-  let playerStrength = 0;
-
-  lineup.forEach((name, index) => {
-    const player = players.find(p => p[0] === name);
+  const originalLineup = (state.lineup || []).slice(0,11);
+  const activePlayers = originalLineup.filter(Boolean);
+  const playerData = name => {
     const card = state.cards.find(c => c.name === name);
-
-    const groups = positionGroups(player?.[1]);
-    const required = expected[index];
-
-    if(
-      groups.length &&
-      !groups.includes("UNKNOWN") &&
-      required &&
-      !groups.includes(required)
-    ){
-      outOfPosition++;
-    }
-
-    // Card tier gives a small contribution to match strength.
-    const tierBonus = {
-      bronze: 0,
-      silver: 2,
-      gold: 4,
-      inform: 6
+    const player = players.find(p => p[0] === name);
+    return {
+      name,
+      position: card?.position || player?.[1] || "",
+      tier: card?.tier || "bronze"
     };
-
-    playerStrength += 7 + (tierBonus[card?.tier] || 0);
-  });
-
-  const strength = starters > 0
-    ? playerStrength - outOfPosition * 0.7
-    : state.squad.length * 7;
-
-  const oppositionStrength = 35 + Math.random() * 65;
-
-  let homeGoals = 0;
-  let awayGoals = 0;
-  let homeReds = 0;
-  let awayReds = 0;
-  let homeYellows = 0;
-  let awayYellows = 0;
-
-  const scorers = {};
-  const commentary = [];
+  };
 
   const homeName = state.club || "Your Club";
   const awayName = "FFL Opponents";
+  const opponentPlayers = [
+    "Opponent striker","Opponent midfielder","Opponent winger",
+    "Opponent defender","Opponent goalkeeper"
+  ];
 
-  const attackers = lineup.filter(name => {
-    const p = players.find(x => x[0] === name);
-    return positionGroups(p?.[1]).includes("ATT");
+  let homeGoals = 0;
+  let awayGoals = 0;
+  let homeYellows = 0;
+  let awayYellows = 0;
+  let homeReds = 0;
+  let awayReds = 0;
+
+  const yellowCounts = {};
+  const ratings = {};
+  const stats = {};
+  const scorers = {};
+  const assists = {};
+  const commentary = [];
+  const sentOff = new Set();
+  const substitutedOff = new Set();
+  const usedPowerUps = new Set();
+
+  let tactics = "Balanced";
+  let halftimeShout = "";
+  let matchFinished = false;
+  let halftimeOpen = false;
+  let addedFirst = 1 + Math.floor(Math.random() * 3);
+  let addedSecond = 2 + Math.floor(Math.random() * 4);
+  let nextEvent = 4 + Math.floor(Math.random() * 5);
+  let currentHalf = 1;
+  let currentMinute = 0;
+
+  const oppositionStrength = 55 + Math.random() * 35;
+
+  activePlayers.forEach(name => {
+    ratings[name] = 6.0;
+    stats[name] = {
+      goals:0, assists:0, shots:0, tackles:0, saves:0,
+      chances:0, yellow:0, red:0
+    };
   });
 
-  const midfielders = lineup.filter(name => {
-    const p = players.find(x => x[0] === name);
-    return positionGroups(p?.[1]).includes("MID");
-  });
+  function addEvent(minute,message){
+    commentary.unshift({minute,message});
+    if(commentary.length > 30) commentary.pop();
+  }
 
-  const defenders = lineup.filter(name => {
-    const p = players.find(x => x[0] === name);
-    return positionGroups(p?.[1]).includes("DEF");
-  });
+  function clockLabel(half,minute){
+    if(half === 1){
+      return minute <= 45 ? minute + "'" : "45+" + (minute-45) + "'";
+    }
+    return minute <= 45
+      ? (45+minute) + "'"
+      : "90+" + (minute-45) + "'";
+  }
 
-  const goalkeepers = lineup.filter(name => {
-    const p = players.find(x => x[0] === name);
-    return positionGroups(p?.[1]).includes("GK");
-  });
+  function activeNames(){
+    return activePlayers.filter(name =>
+      name && !sentOff.has(name) && !substitutedOff.has(name)
+    );
+  }
 
-  function choose(list, fallback){
+  function groupPlayers(group){
+    return activeNames().filter(name =>
+      positionGroups(playerData(name).position).includes(group)
+    );
+  }
+
+  function choose(list,fallback){
     return list.length
-      ? list[Math.floor(Math.random() * list.length)]
+      ? list[Math.floor(Math.random()*list.length)]
       : fallback;
   }
 
-  function addEvent(minute, message){
-    commentary.unshift({minute, message});
-    if(commentary.length > 12) commentary.pop();
+  function getStrength(){
+    const names = activeNames();
+    let base = 0;
+    let misplaced = 0;
+
+    names.forEach(name => {
+      const data = playerData(name);
+      const tierBonus = {bronze:0,silver:2,gold:4,inform:6};
+      base += 7 + (tierBonus[data.tier] || 0);
+    });
+
+    originalLineup.forEach((name,index) => {
+      if(!name || sentOff.has(name) || substitutedOff.has(name)) return;
+      const groups = positionGroups(playerData(name).position);
+      if(groups.length && !groups.includes("UNKNOWN") &&
+         expected[index] && !groups.includes(expected[index])){
+        misplaced++;
+      }
+    });
+
+    const missing = Math.max(0,11-names.length);
+    const squadPenalty = Math.min(0.4,missing*0.1);
+    const positionPenalty = misplaced*0.7;
+
+    return {
+      value:Math.max(0,(base-positionPenalty)*(1-squadPenalty)),
+      missing,
+      misplaced,
+      squadPenalty
+    };
   }
 
-  function clockLabel(half, minute){
-    if(half === 1){
-      return minute <= 45 ? minute + "'" : "45+" + (minute - 45) + "'";
-    }
-    return minute <= 45
-      ? (45 + minute) + "'"
-      : "90+" + (minute - 45) + "'";
+  function awardRating(name,amount){
+    if(!name || !ratings[name]) return;
+    ratings[name] = Math.max(1,Math.min(10,ratings[name]+amount));
   }
 
-  function updateDisplay(half, minute, phase){
-    const score = `${homeGoals} – ${awayGoals}`;
-    const clock = clockLabel(half, minute);
+  function updateDisplay(phase){
+    const strength = getStrength();
+    const minute = clockLabel(currentHalf,currentMinute);
+    const progress = Math.min(100,
+      (currentHalf===1 ? currentMinute : 45+currentMinute)/90*100
+    );
 
     result.innerHTML = `
-      <div style="background:#10251f;padding:18px;border-radius:12px;margin-top:15px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="background:#10251f;padding:18px;border-radius:12px;margin-top:15px;color:white;">
+        <div style="display:flex;justify-content:space-between;">
           <strong>FFL MATCHDAY</strong>
-          <span style="color:#e5bd55;font-weight:bold;">${phase}</span>
+          <strong style="color:#e5bd55;">${escapeHTML(phase)}</strong>
         </div>
-
         <div style="text-align:center;padding:18px 0;">
-          <div style="font-size:34px;font-weight:bold;color:#e5bd55;">${clock}</div>
-          <div style="font-size:25px;font-weight:bold;margin:8px;">${score}</div>
-          <div>${homeName} vs ${awayName}</div>
+          <div style="font-size:34px;font-weight:bold;color:#e5bd55;">${minute}</div>
+          <div style="font-size:30px;font-weight:bold;margin:8px;">${homeGoals} – ${awayGoals}</div>
+          <div>${escapeHTML(homeName)} vs ${awayName}</div>
         </div>
-
         <div style="height:7px;background:#294238;border-radius:10px;overflow:hidden;">
-          <div style="height:7px;width:${Math.min(100, (half === 1 ? minute : 45 + minute) / 90 * 100)}%;background:#16b878;"></div>
+          <div style="height:7px;width:${progress}%;background:#16b878;"></div>
         </div>
-
-        <h3 style="margin-top:22px;">Live commentary</h3>
-        <div style="max-height:300px;overflow-y:auto;">
-          ${commentary.map(e => `
-            <div style="padding:10px 0;border-bottom:1px solid #294238;">
-              <strong style="color:#e5bd55;">${e.minute}</strong>
-              <div>${e.message}</div>
+        <p class="notice">
+          Players available: ${activeNames().length}
+          · Yellow cards: ${homeYellows+awayYellows}
+          · Red cards: ${homeReds+awayReds}
+          · Out of position: ${strength.misplaced}
+        </p>
+        <h3>Live commentary</h3>
+        <div style="max-height:320px;overflow-y:auto;">
+          ${commentary.map(e=>`
+            <div style="padding:9px 0;border-bottom:1px solid #294238;">
+              <strong style="color:#e5bd55;">${escapeHTML(e.minute)}</strong>
+              <div>${escapeHTML(e.message)}</div>
             </div>
           `).join("")}
         </div>
-
-        <p class="notice">
-          Players out of position: ${outOfPosition}
-          · Yellow cards: ${homeYellows + awayYellows}
-          · Red cards: ${homeReds + awayReds}
-        </p>
+        ${halftimeOpen ? halftimePanel() : ""}
       </div>
     `;
   }
 
-  function generateEvent(half, minute){
-    const time = clockLabel(half, minute);
-    const homeTeam = Math.random() < 0.5;
-    const team = homeTeam ? homeName : awayName;
-    const opponentScorer = "FFL Opponent striker";
-    const scorer = homeTeam
-      ? choose(attackers, choose(midfielders, "Your striker"))
-      : opponentScorer;
+  function halftimePanel(){
+    const bench = state.cards
+      .map(c=>c.name)
+      .filter(name=>name && !originalLineup.includes(name));
 
-    const assist = homeTeam
-      ? choose(midfielders, "Your midfielder")
-      : "FFL Opponent midfielder";
+    return `
+      <div style="margin-top:18px;padding:14px;background:#19372c;border-radius:10px;">
+        <h2>Half-time team talk</h2>
+        <p>Choose a shout. These are for atmosphere only and do not affect gameplay.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;">
+          ${["Fire them up!","Stay composed","Demand more!","Play for the badge","Keep believing"].map(shout=>`
+            <button onclick="window.fflMatchShout('${shout}')">${shout}</button>
+          `).join("")}
+        </div>
+        <p id="shoutResponse">${halftimeShout ? escapeHTML(halftimeShout) : "Choose your message to the team."}</p>
+
+        <h3>Second-half tactics</h3>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;">
+          ${["Attacking","Balanced","Defensive"].map(t=>`
+            <button onclick="window.fflMatchTactic('${t}')">${t}</button>
+          `).join("")}
+        </div>
+        <p>Current approach: <strong>${escapeHTML(tactics)}</strong></p>
+
+        <h3>Substitutions</h3>
+        <p>Choose an available player to replace one of your starters.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;">
+          ${activeNames().map(name=>`
+            <button onclick="window.fflChooseSubOut('${encodeURIComponent(name)}')">
+              Take off ${escapeHTML(name)}
+            </button>
+          `).join("")}
+        </div>
+        <div id="subInChoices"></div>
+
+        <h3>Power-ups</h3>
+        <p>One use of each demo ability per friendly match.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;">
+          ${["Super Sub","Adrenaline","Defensive Lock","Dead Ball Specialist"].map(p=>`
+            <button ${usedPowerUps.has(p)?"disabled":""}
+              onclick="window.fflUsePowerUp('${p}')">${p}</button>
+          `).join("")}
+        </div>
+        <p id="powerUpMessage"></p>
+
+        <button class="primary" onclick="window.fflResumeMatch()">Start second half</button>
+      </div>
+    `;
+  }
+
+  window.fflMatchShout = function(shout){
+    if(!halftimeOpen) return;
+    halftimeShout = shout;
+    const responses = {
+      "Fire them up!":"The manager demands energy and passion!",
+      "Stay composed":"A calm message from the manager.",
+      "Demand more!":"The manager makes expectations clear.",
+      "Play for the badge":"A reminder of what the shirt represents.",
+      "Keep believing":"The manager insists the team can do it."
+    };
+    const el = document.getElementById("shoutResponse");
+    if(el) el.textContent = responses[shout] || shout;
+    addEvent("HT", "Manager's team talk: " + shout);
+  };
+
+  window.fflMatchTactic = function(tactic){
+    if(!halftimeOpen) return;
+    tactics = tactic;
+    const el = document.getElementById("matchResult");
+    if(el) updateDisplay("HALF-TIME");
+  };
+
+  let pendingSubOut = "";
+
+  window.fflChooseSubOut = function(encodedName){
+    if(!halftimeOpen) return;
+    pendingSubOut = decodeURIComponent(encodedName);
+    const bench = state.cards.map(c=>c.name)
+      .filter(name=>name && !originalLineup.includes(name));
+
+    const box = document.getElementById("subInChoices");
+    if(!box) return;
+
+    box.innerHTML = bench.length
+      ? "<p>Choose replacement for " + escapeHTML(pendingSubOut) + ":</p>" +
+        bench.map(name=>`
+          <button onclick="window.fflCompleteSub('${encodeURIComponent(name)}')">
+            Bring on ${escapeHTML(name)}
+          </button>
+        `).join("")
+      : "<p>No unused players available in your collection.</p>";
+  };
+
+  window.fflCompleteSub = function(encodedName){
+    if(!halftimeOpen || !pendingSubOut) return;
+    const incoming = decodeURIComponent(encodedName);
+    const outgoing = pendingSubOut;
+    if(!state.cards.some(c=>c.name===incoming)) return;
+    if(originalLineup.includes(incoming)) return;
+
+    const slot = originalLineup.indexOf(outgoing);
+    if(slot < 0 || sentOff.has(outgoing)) return;
+
+    substitutedOff.add(outgoing);
+    originalLineup[slot] = incoming;
+    activePlayers[activePlayers.indexOf(outgoing)] = incoming;
+    ratings[incoming] = 6.0;
+    stats[incoming] = {
+      goals:0,assists:0,shots:0,tackles:0,saves:0,
+      chances:0,yellow:0,red:0
+    };
+
+    addEvent("HT", `${incoming} replaces ${outgoing}.`);
+    pendingSubOut = "";
+    updateDisplay("HALF-TIME");
+  };
+
+  window.fflUsePowerUp = function(power){
+    if(!halftimeOpen || usedPowerUps.has(power)) return;
+    usedPowerUps.add(power);
+
+    const messages = {
+      "Super Sub":"Super Sub activated. Your next substitute gets a temporary match boost.",
+      "Adrenaline":"Adrenaline activated. Your team will take a more attacking approach.",
+      "Defensive Lock":"Defensive Lock activated. Your team will focus on protecting its goal.",
+      "Dead Ball Specialist":"Dead Ball Specialist activated. Set pieces are now boosted."
+    };
+
+    if(power==="Super Sub") powerEffects.superSub=true;
+    if(power==="Adrenaline") powerEffects.adrenaline=true;
+    if(power==="Defensive Lock") powerEffects.defensive=true;
+    if(power==="Dead Ball Specialist") powerEffects.deadBall=true;
+
+    const el = document.getElementById("powerUpMessage");
+    if(el) el.textContent = messages[power] || "Power-up activated.";
+    updateDisplay("HALF-TIME");
+  };
+
+  const powerEffects = {
+    superSub:false,
+    adrenaline:false,
+    defensive:false,
+    deadBall:false
+  };
+
+  window.fflResumeMatch = function(){
+    if(!halftimeOpen || matchFinished) return;
+    halftimeOpen = false;
+    addEvent("46'", "The teams return for the second half!");
+    currentHalf = 2;
+    currentMinute = 0;
+    nextEvent = 4 + Math.floor(Math.random()*5);
+    updateDisplay("SECOND HALF");
+    runHalf(2);
+  };
+
+  function addGoal(home,scorer,assist,description){
+    if(home){
+      homeGoals++;
+      scorers[scorer]=(scorers[scorer]||0)+1;
+      stats[scorer].goals++;
+      awardRating(scorer,1.0);
+      if(assist && ratings[assist]){
+        assists[assist]=(assists[assist]||0)+1;
+        stats[assist].assists++;
+        awardRating(assist,0.4);
+      }
+    }else{
+      awayGoals++;
+    }
+    addEvent(clockLabel(currentHalf,currentMinute),
+      `⚽ GOAL! ${scorer} ${description || "finds the net"}!`);
+  }
+
+  function bookPlayer(home,player){
+    if(!home){
+      awayYellows++;
+      addEvent(clockLabel(currentHalf,currentMinute),
+        "🟨 The opposition are shown a yellow card.");
+      return;
+    }
+
+    homeYellows++;
+    yellowCounts[player]=(yellowCounts[player]||0)+1;
+    stats[player].yellow++;
+
+    if(yellowCounts[player]>=2){
+      homeReds++;
+      sentOff.add(player);
+      stats[player].red++;
+      awardRating(player,-1.0);
+      addEvent(clockLabel(currentHalf,currentMinute),
+        `🟨🟥 SECOND YELLOW! ${player} is sent off! ${homeName} must continue with fewer players.`);
+    }else{
+      awardRating(player,-0.2);
+      addEvent(clockLabel(currentHalf,currentMinute),
+        `🟨 YELLOW CARD! ${player} is booked.`);
+    }
+  }
+
+  function straightRed(home,player){
+    if(!home){
+      awayReds++;
+      addEvent(clockLabel(currentHalf,currentMinute),
+        "🟥 STRAIGHT RED! An opposition player is sent off!");
+      return;
+    }
+
+    homeReds++;
+    sentOff.add(player);
+    stats[player].red++;
+    awardRating(player,-1.5);
+    addEvent(clockLabel(currentHalf,currentMinute),
+      `🟥 STRAIGHT RED! ${player} is sent off for a serious offence!`);
+  }
+
+  function generateEvent(){
+    const homeStrength = getStrength().value;
+    const homeChance = Math.max(0.25,Math.min(0.75,
+      0.5+(homeStrength-oppositionStrength)/180
+    ));
+    const home = Math.random()<homeChance;
+    const team = home ? homeName : awayName;
+    const attack = groupPlayers("ATT");
+    const mids = groupPlayers("MID");
+    const defence = groupPlayers("DEF");
+    const keeper = groupPlayers("GK");
+    const scorer = home
+      ? choose(attack,choose(mids,"Your player"))
+      : "Opponent striker";
+    const creator = home
+      ? choose(mids,choose(attack,"Your player"))
+      : "Opponent midfielder";
+    const time = clockLabel(currentHalf,currentMinute);
 
     const roll = Math.random();
 
-    // Regular goal.
-    if(roll < 0.25){
-      if(homeTeam) homeGoals++;
-      else awayGoals++;
-
-      scorers[scorer] = (scorers[scorer] || 0) + 1;
-
-      addEvent(time, `⚽ GOAL! ${scorer} scores for ${team}! Assist: ${assist}.`);
-    }
-
-    // Corner.
-    else if(roll < 0.39){
-      if(Math.random() < 0.4){
-        if(homeTeam) homeGoals++;
-        else awayGoals++;
-
-        scorers[scorer] = (scorers[scorer] || 0) + 1;
-        addEvent(time, `⚽ GOAL! Corner delivered and ${scorer} heads it home!`);
-      } else {
-        addEvent(time, `🚩 Corner for ${team}. The goalkeeper claims the delivery.`);
+    if(roll<0.12){
+      addEvent(time,`${team} build patiently and look for an opening.`);
+    }else if(roll<0.21){
+      addEvent(time,`${team} work the ball wide and deliver a dangerous cross.`);
+    }else if(roll<0.29){
+      addEvent(time,`${scorer} gets a sight of goal but fires narrowly wide.`);
+      if(home) stats[scorer].shots++;
+    }else if(roll<0.36){
+      addEvent(time,`A brilliant save denies ${scorer}!`);
+      if(!home && keeper.length){
+        stats[choose(keeper,"Your goalkeeper")].saves++;
+        awardRating(choose(keeper,"Your goalkeeper"),0.3);
       }
-    }
-
-    // Free kick.
-    else if(roll < 0.51){
-      if(Math.random() < 0.4){
-        if(homeTeam) homeGoals++;
-        else awayGoals++;
-
-        scorers[scorer] = (scorers[scorer] || 0) + 1;
-        addEvent(time, `⚽ WHAT A FREE KICK! ${scorer} finds the net!`);
-      } else {
-        addEvent(time, `Free kick for ${team}. The shot goes just wide.`);
+    }else if(roll<0.42){
+      addEvent(time,`The ball strikes the post! ${team} are inches away.`);
+    }else if(roll<0.49){
+      addGoal(home,scorer,creator,"finishes a flowing move");
+    }else if(roll<0.53){
+      addGoal(home,scorer,creator,"powers home a header from a corner");
+    }else if(roll<0.56){
+      addEvent(time,`🚩 Corner for ${team}. The delivery causes problems.`);
+      if(powerEffects.deadBall && home && Math.random()<0.3){
+        addGoal(true,scorer,creator,"scores from the boosted set piece");
       }
-    }
-
-    // Penalty.
-    else if(roll < 0.60){
-      if(Math.random() < 0.7){
-        if(homeTeam) homeGoals++;
-        else awayGoals++;
-
-        scorers[scorer] = (scorers[scorer] || 0) + 1;
-        addEvent(time, `⚽ PENALTY SCORED! ${scorer} sends the goalkeeper the wrong way!`);
-      } else {
-        addEvent(time, `PENALTY SAVED! The goalkeeper denies ${scorer}!`);
+    }else if(roll<0.59){
+      addEvent(time,`A free kick in a dangerous position for ${team}.`);
+      if(powerEffects.deadBall && home && Math.random()<0.25){
+        addGoal(true,scorer,creator,"scores from the free kick");
       }
-    }
-
-    // Yellow card.
-    else if(roll < 0.76){
-      if(homeTeam) homeYellows++;
-      else awayYellows++;
-
-      const player = homeTeam
-        ? choose(defenders, choose(midfielders, "Your player"))
-        : "FFL Opponent defender";
-
-      addEvent(time, `🟨 YELLOW CARD! ${player} is booked.`);
-    }
-
-    // Red card.
-    else if(roll < 0.80){
-      if(homeTeam) homeReds++;
-      else awayReds++;
-
-      const player = homeTeam
-        ? choose(defenders, choose(midfielders, "Your player"))
-        : "FFL Opponent defender";
-
-      addEvent(time, `🟥 RED CARD! ${player} is sent off! ${team} must continue with ten players.`);
-    }
-
-    // Goalkeeper save or attacking chance.
-    else {
-      const keeper = homeTeam
-        ? "FFL Opponent goalkeeper"
-        : choose(goalkeepers, "Your goalkeeper");
-
-      addEvent(time, `🧤 Great save by ${keeper}!`);
+    }else if(roll<0.615){
+      if(Math.random()<0.72) addGoal(home,scorer,creator,"converts the penalty");
+      else addEvent(time,`PENALTY SAVED! The goalkeeper makes a huge stop.`);
+    }else if(roll<0.64){
+      addEvent(time,`${team} win possession and launch a quick counter-attack.`);
+    }else if(roll<0.66){
+      const booked = home
+        ? choose([...defence,...mids],"Your player")
+        : "Opponent defender";
+      bookPlayer(home,booked);
+    }else if(roll<0.662){
+      const dismissed = home
+        ? choose([...defence,...mids,...attack],"Your player")
+        : "Opponent defender";
+      straightRed(home,dismissed);
+    }else if(roll<0.70){
+      const tackler = home
+        ? choose(defence,"Your defender")
+        : "Opponent defender";
+      addEvent(time,`${tackler} makes a crucial challenge to stop the attack.`);
+      if(home && ratings[tackler]){
+        stats[tackler].tackles++;
+        awardRating(tackler,0.15);
+      }
+    }else{
+      addEvent(time,`${team} recycle possession and try to build another attack.`);
     }
   }
 
   function finishMatch(){
+    if(matchFinished) return;
+    matchFinished = true;
     activeMatchTimer = null;
 
-    Object.entries(scorers).forEach(([name, goals]) => {
-      if(goals === 2) addEvent("FT", `⭐ BRACE! ${name} finishes with two goals.`);
-      if(goals >= 3) addEvent("FT", `🏆 HAT-TRICK! ${name} scores ${goals} goals!`);
+    Object.entries(scorers).forEach(([name,goals])=>{
+      if(goals===2) addEvent("FT",`⭐ BRACE! ${name} scores twice.`);
+      if(goals>=3) addEvent("FT",`🏆 HAT-TRICK! ${name} scores ${goals} goals!`);
     });
 
-    updateDisplay(2, 45 + addedSecond, "FULL TIME");
+    const eligible = Object.keys(ratings)
+      .filter(name=>!sentOff.has(name));
+    const motm = eligible.sort((a,b)=>ratings[b]-ratings[a])[0] || "No award";
+    const motmRating = ratings[motm] ? ratings[motm].toFixed(1) : "—";
+
+    updateDisplay("FULL TIME");
 
     result.innerHTML += `
-      <div style="padding:15px;background:#172923;border-radius:10px;margin-top:12px;">
+      <div style="padding:16px;background:#172923;border-radius:10px;margin-top:12px;color:white;">
         <h2>FULL TIME</h2>
         <h2 style="color:#e5bd55;">${homeGoals} – ${awayGoals}</h2>
-        <p>${homeName} ${homeGoals > awayGoals ? "WIN" : homeGoals === awayGoals ? "DRAW" : "LOSE"}.</p>
-        <p>Goals: ${Object.entries(scorers).map(([n,g]) => `${n} (${g})`).join(", ") || "No goalscorers"}.</p>
-        <p class="notice">Friendly demonstration only. No competitive league result has been recorded.</p>
+        <p>${escapeHTML(homeName)} ${
+          homeGoals>awayGoals?"WIN":homeGoals===awayGoals?"DRAW":"LOSE"
+        }.</p>
+        <h3>Goalscorers</h3>
+        <p>${Object.entries(scorers).map(([n,g])=>`${escapeHTML(n)} (${g})`).join(", ") || "No goalscorers"}.</p>
+        <h3>🏆 MAN OF THE MATCH</h3>
+        <h2 style="color:#e5bd55;">${escapeHTML(motm)}</h2>
+        <p>Match rating: ${motmRating}/10</p>
+        <h3>Player ratings</h3>
+        ${Object.entries(ratings).map(([n,r])=>`
+          <p>${escapeHTML(n)} — ${r.toFixed(1)}/10
+          · Goals: ${stats[n].goals}
+          · Assists: ${stats[n].assists}
+          · Tackles: ${stats[n].tackles}
+          · Saves: ${stats[n].saves}
+          · Cards: ${stats[n].yellow}Y ${stats[n].red}R</p>
+        `).join("")}
+        <p>Players available at full-time: ${activeNames().length}</p>
+        <p class="notice">Friendly demonstration only. Competitive results are not recorded.</p>
         <button class="primary" onclick="playMatch()">Play another friendly</button>
       </div>
     `;
 
-    if(matchButton) matchButton.disabled = false;
+    if(matchButton) matchButton.disabled=false;
   }
 
-  const addedFirst = 1 + Math.floor(Math.random() * 3);
-  const addedSecond = 2 + Math.floor(Math.random() * 4);
-
-  let nextEvent = 4 + Math.floor(Math.random() * 5);
-
-  addEvent("KO", "Kick-off! The match is underway.");
-  if(matchButton) matchButton.disabled = true;
-
   function runHalf(half){
-    let minute = 0;
-    const added = half === 1 ? addedFirst : addedSecond;
-    const target = 45 + added;
+    currentHalf=half;
+    let minute=0;
+    const added=half===1?addedFirst:addedSecond;
+    const target=45+added;
+    updateDisplay(half===1?"FIRST HALF":"SECOND HALF");
 
-    updateDisplay(half, minute, half === 1 ? "FIRST HALF" : "SECOND HALF");
-
-    activeMatchTimer = setInterval(() => {
+    activeMatchTimer=setInterval(()=>{
       minute++;
+      currentMinute=minute;
 
-      if(minute >= nextEvent){
-        generateEvent(half, minute);
-        nextEvent += 5 + Math.floor(Math.random() * 5);
+      if(minute>=nextEvent){
+        generateEvent();
+        nextEvent+=5+Math.floor(Math.random()*5);
       }
 
-      updateDisplay(half, minute, half === 1 ? "FIRST HALF" : "SECOND HALF");
+      if(powerEffects.adrenaline && half===2 && minute>25 && minute%8===0){
+        addEvent(clockLabel(half,minute),"Your team push forward with extra urgency.");
+      }
 
-      if(minute >= target){
+      updateDisplay(half===1?"FIRST HALF":"SECOND HALF");
+
+      if(minute>=target){
         clearInterval(activeMatchTimer);
-        activeMatchTimer = null;
+        activeMatchTimer=null;
 
-        if(half === 1){
-          addEvent("HT", "Half-time! The players head in for the break.");
-          updateDisplay(1, target, "HALF-TIME");
-
-          setTimeout(() => {
-            nextEvent = 4 + Math.floor(Math.random() * 5);
-            runHalf(2);
-          }, 2500);
-        } else {
-          addEvent("FT", "The final whistle blows!");
+        if(half===1){
+          addEvent("HT","Half-time! The players head in for the break.");
+          halftimeOpen=true;
+          updateDisplay("HALF-TIME");
+        }else{
+          addEvent("FT","The final whistle blows!");
           finishMatch();
         }
       }
-    }, 550);
+    },550);
+  }
+
+  const initialStrength=getStrength();
+  addEvent("KO","Kick-off! The match is underway.");
+  if(matchButton) matchButton.disabled=true;
+
+  if(initialStrength.missing>0){
+    addEvent("KO",`${initialStrength.missing} starting place(s) are empty. Your team will suffer a squad-size penalty.`);
+  }
+  if(initialStrength.misplaced>0){
+    addEvent("KO",`${initialStrength.misplaced} player(s) are out of position.`);
   }
 
   runHalf(1);
