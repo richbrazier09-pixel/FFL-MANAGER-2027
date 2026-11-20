@@ -406,11 +406,27 @@ function toggleSquad(name){
 }
 
 
+
+let activeMatchTimer = null;
+
 function playMatch(){
+  if(activeMatchTimer){
+    clearInterval(activeMatchTimer);
+    activeMatchTimer = null;
+  }
+
+  const result = document.getElementById("matchResult");
+  const matchButton = document.querySelector('#matches button[onclick="playMatch()"]');
+
+  if(!state.club){
+    result.innerHTML = "<p>Please create your club first.</p>";
+    return;
+  }
+
   const formation = document.getElementById("formation").value;
   const rows = formation.split("-").map(Number);
 
-  // Pitch slots are ordered: attackers, midfielders, defenders, goalkeeper.
+  // Formation slots: attackers, midfielders, defenders, goalkeeper.
   const expected = [
     ...Array(rows[2]).fill("ATT"),
     ...Array(rows[1]).fill("MID"),
@@ -418,79 +434,317 @@ function playMatch(){
     "GK"
   ];
 
-  function positionGroup(position){
-    const p = String(position || "").toUpperCase();
-
-    if(p === "GK") return "GK";
-    if(["CB","WB"].includes(p)) return "DEF";
-    if(["CDM","CM","CAM","LM","RM"].includes(p)) return "MID";
-    if(["ST","LW","RW"].includes(p)) return "ATT";
-
-    return "UNKNOWN";
+  function positionGroups(position){
+    return String(position || "").toUpperCase().split("/").map(p => {
+      if(p === "GK") return "GK";
+      if(["CB","WB"].includes(p)) return "DEF";
+      if(["CDM","CM","CAM","LM","RM"].includes(p)) return "MID";
+      if(["ST","LW","RW"].includes(p)) return "ATT";
+      return "UNKNOWN";
+    });
   }
 
-  const lineup = state.lineup || [];
-  let starters = 0;
+  const lineup = (state.lineup || []).filter(Boolean);
+  const starters = lineup.length;
   let outOfPosition = 0;
+  let playerStrength = 0;
 
   lineup.forEach((name, index) => {
-    if(!name) return;
-
-    starters++;
-
     const player = players.find(p => p[0] === name);
-    const actualPosition = positionGroup(player?.[1]);
-    const expectedPosition = expected[index];
+    const card = state.cards.find(c => c.name === name);
+
+    const groups = positionGroups(player?.[1]);
+    const required = expected[index];
 
     if(
-      actualPosition !== "UNKNOWN" &&
-      expectedPosition &&
-      actualPosition !== expectedPosition
+      groups.length &&
+      !groups.includes("UNKNOWN") &&
+      required &&
+      !groups.includes(required)
     ){
       outOfPosition++;
     }
+
+    // Card tier gives a small contribution to match strength.
+    const tierBonus = {
+      bronze: 0,
+      silver: 2,
+      gold: 4,
+      inform: 6
+    };
+
+    playerStrength += 7 + (tierBonus[card?.tier] || 0);
   });
 
-  // Keep the old strength calculation if no pitch lineup is selected.
-  let strength;
+  const strength = starters > 0
+    ? playerStrength - outOfPosition * 0.7
+    : state.squad.length * 7;
 
-  if(starters > 0){
-    strength = starters * 7 - outOfPosition * 0.7;
-  } else {
-    strength = state.squad.length * 7;
+  const oppositionStrength = 35 + Math.random() * 65;
+
+  let homeGoals = 0;
+  let awayGoals = 0;
+  let homeReds = 0;
+  let awayReds = 0;
+  let homeYellows = 0;
+  let awayYellows = 0;
+
+  const scorers = {};
+  const commentary = [];
+
+  const homeName = state.club || "Your Club";
+  const awayName = "FFL Opponents";
+
+  const attackers = lineup.filter(name => {
+    const p = players.find(x => x[0] === name);
+    return positionGroups(p?.[1]).includes("ATT");
+  });
+
+  const midfielders = lineup.filter(name => {
+    const p = players.find(x => x[0] === name);
+    return positionGroups(p?.[1]).includes("MID");
+  });
+
+  const defenders = lineup.filter(name => {
+    const p = players.find(x => x[0] === name);
+    return positionGroups(p?.[1]).includes("DEF");
+  });
+
+  const goalkeepers = lineup.filter(name => {
+    const p = players.find(x => x[0] === name);
+    return positionGroups(p?.[1]).includes("GK");
+  });
+
+  function choose(list, fallback){
+    return list.length
+      ? list[Math.floor(Math.random() * list.length)]
+      : fallback;
   }
 
-  strength += Math.random() * 35;
+  function addEvent(minute, message){
+    commentary.unshift({minute, message});
+    if(commentary.length > 12) commentary.pop();
+  }
 
-  let opposition = 35 + Math.random() * 65;
+  function clockLabel(half, minute){
+    if(half === 1){
+      return minute <= 45 ? minute + "'" : "45+" + (minute - 45) + "'";
+    }
+    return minute <= 45
+      ? (45 + minute) + "'"
+      : "90+" + (minute - 45) + "'";
+  }
 
-  let a = Math.floor(
-    Math.random() * 4 + (strength > opposition ? 1 : 0)
-  );
+  function updateDisplay(half, minute, phase){
+    const score = `${homeGoals} – ${awayGoals}`;
+    const clock = clockLabel(half, minute);
 
-  let b = Math.floor(
-    Math.random() * 4 + (opposition > strength ? 1 : 0)
-  );
+    result.innerHTML = `
+      <div style="background:#10251f;padding:18px;border-radius:12px;margin-top:15px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <strong>FFL MATCHDAY</strong>
+          <span style="color:#e5bd55;font-weight:bold;">${phase}</span>
+        </div>
 
-  let events = [
-    "A promising attack develops.",
-    "A strong defensive challenge wins the ball.",
-    "A shot is saved by the goalkeeper.",
-    "The midfield battle continues.",
-    "A late chance creates excitement."
-  ];
+        <div style="text-align:center;padding:18px 0;">
+          <div style="font-size:34px;font-weight:bold;color:#e5bd55;">${clock}</div>
+          <div style="font-size:25px;font-weight:bold;margin:8px;">${score}</div>
+          <div>${homeName} vs ${awayName}</div>
+        </div>
 
-  let penaltyText = outOfPosition > 0
-    ? `${outOfPosition} player(s) out of position: 10% strength penalty per affected starter.`
-    : "Your starting players are in suitable position categories.";
+        <div style="height:7px;background:#294238;border-radius:10px;overflow:hidden;">
+          <div style="height:7px;width:${Math.min(100, (half === 1 ? minute : 45 + minute) / 90 * 100)}%;background:#16b878;"></div>
+        </div>
 
-  document.getElementById("matchResult").innerHTML = `
-    <h2>${state.club || "Your Club"} ${a} – ${b} FFL Opponents</h2>
-    <p>${events[Math.floor(Math.random() * events.length)]}</p>
-    <p class="notice">${penaltyText}</p>
-    <p class="notice">Friendly demonstration only — not an online league result.</p>
-  `;
+        <h3 style="margin-top:22px;">Live commentary</h3>
+        <div style="max-height:300px;overflow-y:auto;">
+          ${commentary.map(e => `
+            <div style="padding:10px 0;border-bottom:1px solid #294238;">
+              <strong style="color:#e5bd55;">${e.minute}</strong>
+              <div>${e.message}</div>
+            </div>
+          `).join("")}
+        </div>
+
+        <p class="notice">
+          Players out of position: ${outOfPosition}
+          · Yellow cards: ${homeYellows + awayYellows}
+          · Red cards: ${homeReds + awayReds}
+        </p>
+      </div>
+    `;
+  }
+
+  function generateEvent(half, minute){
+    const time = clockLabel(half, minute);
+    const homeTeam = Math.random() < 0.5;
+    const team = homeTeam ? homeName : awayName;
+    const opponentScorer = "FFL Opponent striker";
+    const scorer = homeTeam
+      ? choose(attackers, choose(midfielders, "Your striker"))
+      : opponentScorer;
+
+    const assist = homeTeam
+      ? choose(midfielders, "Your midfielder")
+      : "FFL Opponent midfielder";
+
+    const roll = Math.random();
+
+    // Regular goal.
+    if(roll < 0.25){
+      if(homeTeam) homeGoals++;
+      else awayGoals++;
+
+      scorers[scorer] = (scorers[scorer] || 0) + 1;
+
+      addEvent(time, `⚽ GOAL! ${scorer} scores for ${team}! Assist: ${assist}.`);
+    }
+
+    // Corner.
+    else if(roll < 0.39){
+      if(Math.random() < 0.4){
+        if(homeTeam) homeGoals++;
+        else awayGoals++;
+
+        scorers[scorer] = (scorers[scorer] || 0) + 1;
+        addEvent(time, `⚽ GOAL! Corner delivered and ${scorer} heads it home!`);
+      } else {
+        addEvent(time, `🚩 Corner for ${team}. The goalkeeper claims the delivery.`);
+      }
+    }
+
+    // Free kick.
+    else if(roll < 0.51){
+      if(Math.random() < 0.4){
+        if(homeTeam) homeGoals++;
+        else awayGoals++;
+
+        scorers[scorer] = (scorers[scorer] || 0) + 1;
+        addEvent(time, `⚽ WHAT A FREE KICK! ${scorer} finds the net!`);
+      } else {
+        addEvent(time, `Free kick for ${team}. The shot goes just wide.`);
+      }
+    }
+
+    // Penalty.
+    else if(roll < 0.60){
+      if(Math.random() < 0.7){
+        if(homeTeam) homeGoals++;
+        else awayGoals++;
+
+        scorers[scorer] = (scorers[scorer] || 0) + 1;
+        addEvent(time, `⚽ PENALTY SCORED! ${scorer} sends the goalkeeper the wrong way!`);
+      } else {
+        addEvent(time, `PENALTY SAVED! The goalkeeper denies ${scorer}!`);
+      }
+    }
+
+    // Yellow card.
+    else if(roll < 0.76){
+      if(homeTeam) homeYellows++;
+      else awayYellows++;
+
+      const player = homeTeam
+        ? choose(defenders, choose(midfielders, "Your player"))
+        : "FFL Opponent defender";
+
+      addEvent(time, `🟨 YELLOW CARD! ${player} is booked.`);
+    }
+
+    // Red card.
+    else if(roll < 0.80){
+      if(homeTeam) homeReds++;
+      else awayReds++;
+
+      const player = homeTeam
+        ? choose(defenders, choose(midfielders, "Your player"))
+        : "FFL Opponent defender";
+
+      addEvent(time, `🟥 RED CARD! ${player} is sent off! ${team} must continue with ten players.`);
+    }
+
+    // Goalkeeper save or attacking chance.
+    else {
+      const keeper = homeTeam
+        ? "FFL Opponent goalkeeper"
+        : choose(goalkeepers, "Your goalkeeper");
+
+      addEvent(time, `🧤 Great save by ${keeper}!`);
+    }
+  }
+
+  function finishMatch(){
+    activeMatchTimer = null;
+
+    Object.entries(scorers).forEach(([name, goals]) => {
+      if(goals === 2) addEvent("FT", `⭐ BRACE! ${name} finishes with two goals.`);
+      if(goals >= 3) addEvent("FT", `🏆 HAT-TRICK! ${name} scores ${goals} goals!`);
+    });
+
+    updateDisplay(2, 45 + addedSecond, "FULL TIME");
+
+    result.innerHTML += `
+      <div style="padding:15px;background:#172923;border-radius:10px;margin-top:12px;">
+        <h2>FULL TIME</h2>
+        <h2 style="color:#e5bd55;">${homeGoals} – ${awayGoals}</h2>
+        <p>${homeName} ${homeGoals > awayGoals ? "WIN" : homeGoals === awayGoals ? "DRAW" : "LOSE"}.</p>
+        <p>Goals: ${Object.entries(scorers).map(([n,g]) => `${n} (${g})`).join(", ") || "No goalscorers"}.</p>
+        <p class="notice">Friendly demonstration only. No competitive league result has been recorded.</p>
+        <button class="primary" onclick="playMatch()">Play another friendly</button>
+      </div>
+    `;
+
+    if(matchButton) matchButton.disabled = false;
+  }
+
+  const addedFirst = 1 + Math.floor(Math.random() * 3);
+  const addedSecond = 2 + Math.floor(Math.random() * 4);
+
+  let nextEvent = 4 + Math.floor(Math.random() * 5);
+
+  addEvent("KO", "Kick-off! The match is underway.");
+  if(matchButton) matchButton.disabled = true;
+
+  function runHalf(half){
+    let minute = 0;
+    const added = half === 1 ? addedFirst : addedSecond;
+    const target = 45 + added;
+
+    updateDisplay(half, minute, half === 1 ? "FIRST HALF" : "SECOND HALF");
+
+    activeMatchTimer = setInterval(() => {
+      minute++;
+
+      if(minute >= nextEvent){
+        generateEvent(half, minute);
+        nextEvent += 5 + Math.floor(Math.random() * 5);
+      }
+
+      updateDisplay(half, minute, half === 1 ? "FIRST HALF" : "SECOND HALF");
+
+      if(minute >= target){
+        clearInterval(activeMatchTimer);
+        activeMatchTimer = null;
+
+        if(half === 1){
+          addEvent("HT", "Half-time! The players head in for the break.");
+          updateDisplay(1, target, "HALF-TIME");
+
+          setTimeout(() => {
+            nextEvent = 4 + Math.floor(Math.random() * 5);
+            runHalf(2);
+          }, 2500);
+        } else {
+          addEvent("FT", "The final whistle blows!");
+          finishMatch();
+        }
+      }
+    }, 550);
+  }
+
+  runHalf(1);
 }
+
 
 updateHome();
 </script>
