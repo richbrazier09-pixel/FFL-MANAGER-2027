@@ -517,7 +517,7 @@ if (importBtn) {
     const snapshot = await getDoc(clubRef);
 
     if(snapshot.exists()){
-      const cloudData = snapshot.data();
+      const cloudData = snapshot.data() || {};
       delete cloudData.updatedAt;
 
       Object.assign(window.fflState, cloudData);
