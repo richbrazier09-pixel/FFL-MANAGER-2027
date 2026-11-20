@@ -357,7 +357,22 @@ updateHome();
     signOut: () => signOut(auth),
     onAuthStateChanged: callback => onAuthStateChanged(auth, callback)
   };
+const signInButton = document.getElementById("googleSignIn");
+const signOutButton = document.getElementById("googleSignOut");
+const accountStatus = document.getElementById("accountStatus");
 
+onAuthStateChanged(auth, user => {
+  if (user) {
+    accountStatus.textContent =
+      "Welcome, " + (user.displayName || user.email);
+    signInButton.style.display = "none";
+    signOutButton.style.display = "inline-block";
+  } else {
+    accountStatus.textContent = "Not signed in";
+    signInButton.style.display = "inline-block";
+    signOutButton.style.display = "none";
+  }
+});
  
 
 console.log("FFL Manager Firebase connected!");
