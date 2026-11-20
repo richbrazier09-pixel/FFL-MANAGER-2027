@@ -305,42 +305,100 @@ function exchangeGold(){
  save();renderCards();
  document.getElementById("exchangeMessage").textContent="Exchange complete! You earned an In-Form "+player[0]+" card.";
 }
+
 function renderSquad(){
  let owned=[...new Set(state.cards.map(c=>c.name))];
  let list=document.getElementById("squadList");
+
+ state.lineup = state.lineup || [];
+
  list.innerHTML=owned.length?owned.map(name=>{
- let p=players.find(x=>x[0]===name) || [name, "Unknown"];
- let selected=state.squad.includes(name)?" selected":"";
- return `<div class="squad-row"><span>${name} <small>${p[1]}</small></span><button class="secondary" onclick="toggleSquad('${name.replace(/'/g,"")}')">${selected?"Remove":"Add"}</button></div>`;
+   let p=players.find(x=>x[0]===name) || [name,"Unknown"];
+   let selected=state.squad.includes(name)?" selected":"";
+   return `<div class="squad-row">
+     <span>${name} <small>${p[1]}</small></span>
+     <button class="secondary" onclick="toggleSquad('${name.replace(/'/g,"")}')">${selected?"Remove":"Add"}</button>
+   </div>`;
  }).join(""):"<p>Open packs to collect players for your squad.</p>";
+
  let cap=document.getElementById("captain");
- cap.innerHTML='<option value="">Choose captain</option>'+owned.map(n=>`<option ${state.captain===n?"selected":""}>${n}</option>`).join("");
+ cap.innerHTML='<option value="">Choose captain</option>'+
+ state.squad.map(n=>`<option value="${n}" ${state.captain===n?"selected":""}>${n}</option>`).join("");
+
  let formation=document.getElementById("formation").value;
-let lines=formation.split("-").map(Number);
-let names=state.squad.slice(0,11);
-let html="";
-let i=0;
+ let lines=formation.split("-").map(Number);
+ let html="";
+ let slot=0;
 
-lines.slice().reverse().forEach(count=>{
- let row=[];
- for(let j=0;j<count;j++){
-   row.push(names[i++]||"Empty slot");
+ // Attackers, midfielders and defenders
+ lines.slice().reverse().forEach((count,rowIndex)=>{
+   let row=[];
+   for(let j=0;j<count;j++){
+     let current=state.lineup[slot]||"";
+     let options='<option value="">Empty slot</option>';
+
+     state.squad.forEach(name=>{
+       options+=`<option value="${name}" ${current===name?"selected":""}>${name}</option>`;
+     });
+
+     row.push(`
+       <div class="pitch-player">
+         <select onchange="setLineup(${slot},this.value)">
+           ${options}
+         </select>
+       </div>
+     `);
+     slot++;
+   }
+   html+='<div class="pitch-line">'+row.join("")+'</div>';
+ });
+
+ // Goalkeeper
+ let keeper=state.lineup[slot]||"";
+ let keeperOptions='<option value="">Choose GK</option>';
+
+ state.squad.forEach(name=>{
+   keeperOptions+=`<option value="${name}" ${keeper===name?"selected":""}>${name}</option>`;
+ });
+
+ html+=`<div class="pitch-line">
+   <div class="pitch-player">
+     <select onchange="setLineup(${slot},this.value)">
+       ${keeperOptions}
+     </select>
+   </div>
+ </div>`;
+
+ document.getElementById("pitch").innerHTML=html;
+}
+
+function setLineup(slot,name){
+ state.lineup=state.lineup||[];
+
+ // Prevent the same player occupying two positions
+ if(name && state.lineup.some((n,i)=>n===name&&i!==slot)){
+   alert("That player is already in another position.");
+   renderSquad();
+   return;
  }
- html+='<div class="pitch-line">'+
- row.map(n=>`<div class="pitch-player">${n}</div>`).join("")+
- '</div>';
-});
 
-html+='<div class="pitch-line"><div class="pitch-player">GK</div></div>';
-
-document.getElementById("pitch").innerHTML=html;
+ state.lineup[slot]=name;
+ save();
+ renderSquad();
 }
 
 function toggleSquad(name){
- if(state.squad.includes(name))state.squad=state.squad.filter(n=>n!==name);
- else if(state.squad.length<11)state.squad.push(name);
- save();renderSquad();
+ if(state.squad.includes(name)){
+   state.squad=state.squad.filter(n=>n!==name);
+   state.lineup=(state.lineup||[]).map(n=>n===name?"":n);
+ } else if(state.squad.length<11){
+   state.squad.push(name);
+ }
+
+ save();
+ renderSquad();
 }
+
 function playMatch(){
  let strength=state.squad.length*7+Math.random()*35;
  let opposition=35+Math.random()*65;
