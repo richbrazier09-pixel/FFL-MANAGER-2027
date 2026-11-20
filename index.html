@@ -373,6 +373,7 @@ function showPage(page){
  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
  if(page==="collection")renderCards();
  if(page==="squad")renderSquad();
+  if(page==="shop")updateShop();
 }
 document.querySelectorAll("nav button[data-page]").forEach(button => {
   button.onclick = () => showPage(button.dataset.page);
