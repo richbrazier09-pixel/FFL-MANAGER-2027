@@ -1,0 +1,288 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FFL Manager 2027</title>
+<style>
+:root {
+  --bg:#07110f; --panel:#101e1a; --panel2:#172923;
+  --green:#16b878; --gold:#e5bd55; --muted:#9aaca4;
+  --white:#f5f8f5; --border:#294238;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--white);font-family:Arial,sans-serif}
+header{padding:22px 5%;background:#0b1914;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.logo{font-size:23px;font-weight:900;letter-spacing:1px}
+.logo span{color:var(--green)}
+header small{color:var(--muted)}
+nav{display:flex;gap:7px;padding:12px 5%;overflow-x:auto;background:#0b1713;border-bottom:1px solid var(--border)}
+button{cursor:pointer;border:0;border-radius:8px;padding:11px 15px;font-weight:bold}
+nav button{background:var(--panel2);color:#dce8e1;white-space:nowrap}
+nav button.active,.primary{background:var(--green);color:#06150e}
+main{max-width:1150px;margin:auto;padding:25px 5%}
+h1{font-size:29px;margin:0 0 8px}
+h2{font-size:21px;margin:0 0 14px}
+p{color:var(--muted);line-height:1.5}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:19px;margin:16px 0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{background:var(--panel2);padding:16px;border-radius:10px}
+.stat strong{display:block;font-size:24px;color:var(--gold)}
+.stat small{color:var(--muted)}
+input,select{background:#081510;border:1px solid var(--border);color:white;border-radius:8px;padding:12px;width:100%;margin:6px 0 14px}
+label{font-size:13px;color:var(--muted)}
+.primary{margin:5px 4px 5px 0}
+.secondary{background:var(--panel2);color:white;border:1px solid var(--border);margin:5px 4px 5px 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:13px}
+.player-card{min-height:190px;border-radius:12px;padding:13px;display:flex;flex-direction:column;justify-content:space-between;border:2px solid #ffffff30;box-shadow:0 5px 16px #0005}
+.player-card.bronze{background:linear-gradient(145deg,#bd8758,#57351f)}
+.player-card.silver{background:linear-gradient(145deg,#cbd2d7,#56616b);color:#101820}
+.player-card.gold{background:linear-gradient(145deg,#f3d879,#94651d);color:#241a08}
+.player-card.inform{background:linear-gradient(145deg,#30343d,#07090d);border-color:var(--gold)}
+.player-card .tier{font-size:11px;font-weight:900;letter-spacing:1px}
+.player-card .name{font-size:17px;font-weight:900;margin-top:20px}
+.player-card .position{font-size:12px;opacity:.85}
+.player-card .footer{font-size:11px;font-weight:bold;display:flex;justify-content:space-between}
+.tag{display:inline-block;background:#18382a;color:#a8f3cf;padding:5px 8px;border-radius:20px;font-size:11px;margin:3px}
+.hidden{display:none!important}
+.notice{font-size:12px;color:var(--muted)}
+.squad-row{display:flex;align-items:center;justify-content:space-between;padding:10px;border-bottom:1px solid var(--border);gap:10px}
+.squad-row select{max-width:145px;margin:0}
+.pitch{background:linear-gradient(#15563b,#10452f);border:3px solid #76b99a;border-radius:14px;padding:22px 10px;min-height:330px;display:flex;flex-direction:column;justify-content:space-around;text-align:center}
+.pitch-line{display:flex;justify-content:space-around;gap:5px;flex-wrap:wrap}
+.pitch-player{background:#e4f6e9;color:#123321;padding:8px;border-radius:8px;font-size:11px;min-width:75px}
+footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
+@media(max-width:550px){.stats{grid-template-columns:1fr 1fr}header{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">FFL <span>MANAGER</span> 2027</div>
+  <small>Build your club. Build your legacy.</small>
+</header>
+<nav id="nav">
+  <button class="active" data-page="home">Home</button>
+  <button data-page="club">My Club</button>
+  <button data-page="packs">Packs</button>
+  <button data-page="squad">Squad</button>
+  <button data-page="collection">Cards</button>
+  <button data-page="matches">Matches</button>
+  <button data-page="league">League</button>
+</nav>
+<main>
+<section id="home">
+  <h1>Welcome to FFL Manager 2027</h1>
+  <p>Your football management journey starts here.</p>
+  <div class="stats">
+    <div class="stat"><strong id="clubStat">Not set</strong><small>Club</small></div>
+    <div class="stat"><strong id="cardStat">0</strong><small>Player cards</small></div>
+    <div class="stat"><strong id="packStat">3</strong><small>Free packs available</small></div>
+  </div>
+  <div class="panel">
+    <h2>Getting started</h2>
+    <p>Create your club, open your starter packs, collect players and build your squad.</p>
+    <button class="primary" onclick="showPage('club')">Create my club</button>
+    <button class="secondary" onclick="showPage('packs')">Open packs</button>
+  </div>
+  <div class="panel">
+    <h2>Today's objectives</h2>
+    <p>Open a pack · Set your starting squad · Play a friendly simulation.</p>
+    <span class="tag">Rewards coming soon</span>
+  </div>
+</section>
+
+<section id="club" class="hidden">
+  <h1>My Club</h1>
+  <div class="panel">
+    <label>Manager name</label><input id="managerName" placeholder="Enter manager name">
+    <label>Club name</label><input id="clubName" placeholder="Enter your club name">
+    <label>Kit colour</label>
+    <select id="kitColour">
+      <option value="#16b878">Emerald green</option><option value="#2477d4">Royal blue</option>
+      <option value="#d63d42">Red</option><option value="#e4e4e4">White</option>
+      <option value="#e5bd55">Gold</option><option value="#813cc5">Purple</option>
+      <option value="#f07827">Orange</option><option value="#111111">Black</option>
+    </select>
+    <p class="notice">All clubs play at Ellesmere Port Church of England College.</p>
+    <button class="primary" onclick="saveClub()">Save club</button>
+    <p id="clubMessage"></p>
+  </div>
+  <div class="panel"><h2>Club stadium</h2><strong>Ellesmere Port Church of England College</strong></div>
+</section>
+
+<section id="packs" class="hidden">
+  <h1>Pack Store</h1>
+  <p>Earn cards through free packs. No real-money purchases.</p>
+  <div class="panel">
+    <h2>Free Player Pack</h2>
+    <p>Contains a player card. Higher tiers are less common.</p>
+    <p class="notice">Demo odds: Bronze 65% · Silver 25% · Gold 10%. In-Form cards are not pack rewards.</p>
+    <button class="primary" onclick="openPack()">Open free pack</button>
+    <p id="packMessage"></p>
+    <div id="packReveal"></div>
+  </div>
+  <div class="panel">
+    <h2>In-Form exchange</h2>
+    <p>Exchange 5 Gold cards for one rare black In-Form card. This is a starter setting and can be adjusted.</p>
+    <button class="secondary" onclick="exchangeGold()">Exchange 5 Gold cards</button>
+    <p id="exchangeMessage"></p>
+  </div>
+</section>
+
+<section id="squad" class="hidden">
+  <h1>Squad Builder</h1>
+  <div class="panel">
+    <label>Formation</label>
+    <select id="formation" onchange="renderSquad()">
+      <option value="4-3-3">4-3-3</option><option value="4-4-2">4-4-2</option>
+      <option value="3-5-2">3-5-2</option><option value="5-3-2">5-3-2</option>
+    </select>
+    <label>Captain</label><select id="captain" onchange="save()"></select>
+    <p class="notice">Chemistry links and captain bonuses will be applied by the online match engine.</p>
+  </div>
+  <div class="pitch" id="pitch"></div>
+  <div class="panel"><h2>Choose your players</h2><div id="squadList"></div></div>
+</section>
+
+<section id="collection" class="hidden">
+  <h1>My Player Cards</h1>
+  <p>Your cards and duplicate upgrades.</p>
+  <div id="collectionGrid" class="cards"></div>
+  <p id="collectionEmpty" class="notice">Open a pack to start collecting players.</p>
+</section>
+
+<section id="matches" class="hidden">
+  <h1>Match Centre</h1>
+  <div class="panel">
+    <h2>Friendly match simulation</h2>
+    <p>This is a local demonstration. Online competitive fixtures will be connected to the secure game server later.</p>
+    <button class="primary" onclick="playMatch()">Simulate friendly</button>
+    <div id="matchResult"></div>
+  </div>
+</section>
+
+<section id="league" class="hidden">
+  <h1>Online Leagues</h1>
+  <div class="panel">
+    <h2>FFL Premiership</h2>
+    <p>Maximum 12 clubs.</p>
+    <span class="tag">Promotion and relegation planned</span>
+  </div>
+  <div class="panel">
+    <h2>FFL Championship</h2>
+    <p>Open-entry league with promotion to the Premiership.</p>
+  </div>
+  <p class="notice">Online accounts, shared standings, fixtures and Sunday processing are not active yet. They require secure Firebase authentication and server-side functions.</p>
+</section>
+</main>
+<footer>FFL MANAGER 2027 · Unofficial football management game</footer>
+
+<script>
+const players = [
+["Rich Brazier","CAM"],["Tom Brazier","CM/CDM"],["James Drake","GK"],
+["Jamie Wolff","CAM"],["Adam Pace","ST"],["Neil Russell","CM"],
+["Mikey Williams","CB"],["Tom White","CB"],["Sam AT","CM"],
+["Richie Price","WB"],["Liam White","ST"],["Rasheed Agboola","ST/WB"],
+["Adam Prior","CB"],["Owen Florence","CM"],["Steve Parker","CM/CB"],
+["Jerry Osholaja","CB"],["Nath Tam","WB/ST"],["Jason Peng","WB/ST"],
+["Jamie Crewe","ST"],["Nigel Tam","WB/CM"],["Sammi Davies","ST/WB"],
+["Sam DJ","CB/WB"],["Stephen Lovelady","CM"],["Tom Stanners","CM/WB"],
+["Jack Hall","CB/WB"],["Connor Drake","GK"],["Lewis Gillam","WB"],
+["Luke Cowling","CB"],["JJ HALL","GK"],["Nicol Tam","WB/CM"],
+["Kwok Leung","ST/WB"],["Rob Hughes","CB"],["Mark Prankerd","ST"]
+];
+let state = JSON.parse(localStorage.getItem("ffl2027demo") || "null") || {
+ club:"",manager:"",kit:"#16b878",packs:3,cards:[],squad:[],captain:""
+};
+function save(){localStorage.setItem("ffl2027demo",JSON.stringify(state));updateHome()}
+function showPage(page){
+ document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
+ document.getElementById(page).classList.remove("hidden");
+ document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("active",b.dataset.page===page));
+ if(page==="collection")renderCards();
+ if(page==="squad")renderSquad();
+}
+document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+function updateHome(){
+ document.getElementById("clubStat").textContent=state.club||"Not set";
+ document.getElementById("cardStat").textContent=state.cards.length;
+ document.getElementById("packStat").textContent=state.packs;
+}
+function saveClub(){
+ state.manager=document.getElementById("managerName").value.trim();
+ state.club=document.getElementById("clubName").value.trim();
+ state.kit=document.getElementById("kitColour").value;
+ if(!state.club){document.getElementById("clubMessage").textContent="Please enter a club name.";return}
+ save();document.getElementById("clubMessage").textContent="Club saved on this device!";
+}
+function makeCard(player,tier){
+ return {id:Date.now()+Math.random(),name:player[0],position:player[1],tier};
+}
+function openPack(){
+ if(state.packs<=0){document.getElementById("packMessage").textContent="No free packs left today in this demo.";return}
+ state.packs--;
+ let r=Math.random()*100,tier=r<65?"bronze":r<90?"silver":"gold";
+ let player=players[Math.floor(Math.random()*players.length)];
+ let existing=state.cards.find(c=>c.name===player[0]&&c.tier===tier);
+ if(existing){existing.duplicate=(existing.duplicate||0)+1;document.getElementById("packMessage").textContent="Duplicate collected! Your "+tier+" "+player[0]+" has been upgraded."}
+ else {state.cards.push(makeCard(player,tier));document.getElementById("packMessage").textContent="You found "+player[0]+"!"}
+ document.getElementById("packReveal").innerHTML=cardHTML({name:player[0],position:player[1],tier});
+ save();renderCards();
+}
+function cardHTML(c){
+ let title=c.tier==="inform"?"IN-FORM":c.tier.toUpperCase();
+ return `<div class="player-card ${c.tier}"><div class="tier">${title}</div><div><div class="name">${c.name}</div><div class="position">${c.position}</div></div><div class="footer"><span>FFL 2027</span><span>${c.duplicate? "DUPLICATES "+c.duplicate:"PLAYER"}</span></div></div>`;
+}
+function renderCards(){
+ let grid=document.getElementById("collectionGrid");
+ grid.innerHTML=state.cards.map(cardHTML).join("");
+ document.getElementById("collectionEmpty").classList.toggle("hidden",state.cards.length>0);
+}
+function exchangeGold(){
+ let gold=state.cards.filter(c=>c.tier==="gold");
+ if(gold.length<5){document.getElementById("exchangeMessage").textContent="You need 5 Gold cards. You currently have "+gold.length+".";return}
+ let player=players[Math.floor(Math.random()*players.length)];
+ let used=0;state.cards=state.cards.filter(c=>{if(c.tier==="gold"&&used<5){used++;return false}return true});
+ state.cards.push(makeCard(player,"inform"));
+ save();renderCards();
+ document.getElementById("exchangeMessage").textContent="Exchange complete! You earned an In-Form "+player[0]+" card.";
+}
+function renderSquad(){
+ let owned=[...new Set(state.cards.map(c=>c.name))];
+ let list=document.getElementById("squadList");
+ list.innerHTML=owned.length?owned.map(name=>{
+ let p=players.find(x=>x[0]===name);
+ let selected=state.squad.includes(name)?" selected":"";
+ return `<div class="squad-row"><span>${name} <small>${p[1]}</small></span><button class="secondary" onclick="toggleSquad('${name.replace(/'/g,"")}')">${selected?"Remove":"Add"}</button></div>`;
+ }).join(""):"<p>Open packs to collect players for your squad.</p>";
+ let cap=document.getElementById("captain");
+ cap.innerHTML='<option value="">Choose captain</option>'+owned.map(n=>`<option ${state.captain===n?"selected":""}>${n}</option>`).join("");
+ let formation=document.getElementById("formation").value;
+ let lines=formation.split("-").map(Number);
+ let names=state.squad.slice(0,11);
+ let html='<div class="pitch-line"><div class="pitch-player">GK</div></div>';
+ let i=0;
+ lines.slice().reverse().forEach((count,index)=>{
+ let row=[];for(let j=0;j<count;j++){row.push(names[i++]||"Empty slot")}
+ html+='<div class="pitch-line">'+row.map(n=>`<div class="pitch-player">${n}</div>`).join("")+'</div>';
+ });
+ document.getElementById("pitch").innerHTML=html;
+}
+function toggleSquad(name){
+ if(state.squad.includes(name))state.squad=state.squad.filter(n=>n!==name);
+ else if(state.squad.length<11)state.squad.push(name);
+ save();renderSquad();
+}
+function playMatch(){
+ let strength=state.squad.length*7+Math.random()*35;
+ let opposition=35+Math.random()*65;
+ let a=Math.floor(Math.random()*4+(strength>opposition?1:0));
+ let b=Math.floor(Math.random()*4+(opposition>strength?1:0));
+ let events=["A promising attack develops.","A strong defensive challenge wins the ball.","A shot is saved by the goalkeeper.","The midfield battle continues.","A late chance creates excitement."];
+ document.getElementById("matchResult").innerHTML=`<h2>${state.club||"Your Club"} ${a} – ${b} FFL Opponents</h2><p>${events[Math.floor(Math.random()*events.length)]}</p><p class="notice">Friendly demonstration only — not an online league result.</p>`;
+}
+updateHome();
+</script>
+</body>
+</html>
