@@ -249,7 +249,9 @@ function showPage(page){
  if(page==="collection")renderCards();
  if(page==="squad")renderSquad();
 }
-document.querySelectorAll("nav button").forEach(b=>b.onclick=()=>showPage(b.dataset.page));
+document.querySelectorAll("nav button[data-page]").forEach(button => {
+  button.onclick = () => showPage(button.dataset.page);
+});
 function updateHome(){
  document.getElementById("clubStat").textContent=state.club||"Not set";
  document.getElementById("cardStat").textContent=state.cards.length;
