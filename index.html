@@ -405,14 +405,93 @@ function toggleSquad(name){
  renderSquad();
 }
 
+
 function playMatch(){
- let strength=state.squad.length*7+Math.random()*35;
- let opposition=35+Math.random()*65;
- let a=Math.floor(Math.random()*4+(strength>opposition?1:0));
- let b=Math.floor(Math.random()*4+(opposition>strength?1:0));
- let events=["A promising attack develops.","A strong defensive challenge wins the ball.","A shot is saved by the goalkeeper.","The midfield battle continues.","A late chance creates excitement."];
- document.getElementById("matchResult").innerHTML=`<h2>${state.club||"Your Club"} ${a} – ${b} FFL Opponents</h2><p>${events[Math.floor(Math.random()*events.length)]}</p><p class="notice">Friendly demonstration only — not an online league result.</p>`;
+  const formation = document.getElementById("formation").value;
+  const rows = formation.split("-").map(Number);
+
+  // Pitch slots are ordered: attackers, midfielders, defenders, goalkeeper.
+  const expected = [
+    ...Array(rows[2]).fill("ATT"),
+    ...Array(rows[1]).fill("MID"),
+    ...Array(rows[0]).fill("DEF"),
+    "GK"
+  ];
+
+  function positionGroup(position){
+    const p = String(position || "").toUpperCase();
+
+    if(p === "GK") return "GK";
+    if(["CB","WB"].includes(p)) return "DEF";
+    if(["CDM","CM","CAM","LM","RM"].includes(p)) return "MID";
+    if(["ST","LW","RW"].includes(p)) return "ATT";
+
+    return "UNKNOWN";
+  }
+
+  const lineup = state.lineup || [];
+  let starters = 0;
+  let outOfPosition = 0;
+
+  lineup.forEach((name, index) => {
+    if(!name) return;
+
+    starters++;
+
+    const player = players.find(p => p[0] === name);
+    const actualPosition = positionGroup(player?.[1]);
+    const expectedPosition = expected[index];
+
+    if(
+      actualPosition !== "UNKNOWN" &&
+      expectedPosition &&
+      actualPosition !== expectedPosition
+    ){
+      outOfPosition++;
+    }
+  });
+
+  // Keep the old strength calculation if no pitch lineup is selected.
+  let strength;
+
+  if(starters > 0){
+    strength = starters * 7 - outOfPosition * 0.7;
+  } else {
+    strength = state.squad.length * 7;
+  }
+
+  strength += Math.random() * 35;
+
+  let opposition = 35 + Math.random() * 65;
+
+  let a = Math.floor(
+    Math.random() * 4 + (strength > opposition ? 1 : 0)
+  );
+
+  let b = Math.floor(
+    Math.random() * 4 + (opposition > strength ? 1 : 0)
+  );
+
+  let events = [
+    "A promising attack develops.",
+    "A strong defensive challenge wins the ball.",
+    "A shot is saved by the goalkeeper.",
+    "The midfield battle continues.",
+    "A late chance creates excitement."
+  ];
+
+  let penaltyText = outOfPosition > 0
+    ? `${outOfPosition} player(s) out of position: 10% strength penalty per affected starter.`
+    : "Your starting players are in suitable position categories.";
+
+  document.getElementById("matchResult").innerHTML = `
+    <h2>${state.club || "Your Club"} ${a} – ${b} FFL Opponents</h2>
+    <p>${events[Math.floor(Math.random() * events.length)]}</p>
+    <p class="notice">${penaltyText}</p>
+    <p class="notice">Friendly demonstration only — not an online league result.</p>
+  `;
 }
+
 updateHome();
 </script>
   <script type="module">
