@@ -215,19 +215,21 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
 <footer>FFL MANAGER 2027 · Unofficial football management game</footer>
 
 <script>
-const players = [
-["Rich Brazier","CAM"],["Tom Brazier","CM/CDM"],["James Drake","GK"],
-["Jamie Wolff","CAM"],["Adam Pace","ST"],["Neil Russell","CM"],
-["Mikey Williams","CB"],["Tom White","CB"],["Sam AT","CM"],
-["Richie Price","WB"],["Liam White","ST"],["Rasheed Agboola","ST/WB"],
-["Adam Prior","CB"],["Owen Florence","CM"],["Steve Parker","CM/CB"],
-["Jerry Osholaja","CB"],["Nath Tam","WB/ST"],["Jason Peng","WB/ST"],
-["Jamie Crewe","ST"],["Nigel Tam","WB/CM"],["Sammi Davies","ST/WB"],
-["Sam DJ","CB/WB"],["Stephen Lovelady","CM"],["Tom Stanners","CM/WB"],
-["Jack Hall","CB/WB"],["Connor Drake","GK"],["Lewis Gillam","WB"],
-["Luke Cowling","CB"],["JJ HALL","GK"],["Nicol Tam","WB/CM"],
-["Kwok Leung","ST/WB"],["Rob Hughes","CB"],["Mark Prankerd","ST"]
-];
+const players = let players = [];
+
+function updatePlayersFromFirebase() {
+  if (!window.fflPlayers || window.fflPlayers.length === 0) {
+    console.warn("Firebase player database is not loaded yet.");
+    return;
+  }
+
+  players = window.fflPlayers.map(player => [
+    player.name,
+    player.position
+  ]);
+
+  console.log("Game player list updated:", players.length);
+}
 let state = JSON.parse(localStorage.getItem("ffl2027demo") || "null") || {
  club:"",manager:"",kit:"#16b878",packs:3,cards:[],squad:[],captain:""
 };
