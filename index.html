@@ -1155,14 +1155,22 @@ function getFatigueRate(name){
       }
     }else if(roll<0.42){
       addEvent(time,`The ball strikes the post! ${team} are inches away.`);
-    }else if(roll<0.49){
-  if(!home || Math.random() < getActionMultiplier(scorer,"shooting")){
+  }else if(roll<0.49){
+  const conversionChance = home
+    ? Math.min(0.95,0.82*getActionMultiplier(scorer,"shooting"))
+    : 0.82;
+
+  if(Math.random() < conversionChance){
     addGoal(home,scorer,creator,"finishes a flowing move");
   }else{
     addEvent(time,`${scorer} gets the chance but cannot quite find the finish.`);
   }
 }else if(roll<0.53){
-  if(!home || Math.random() < getActionMultiplier(scorer,"heading")){
+  const headerChance = home
+    ? Math.min(0.95,0.82*getActionMultiplier(scorer,"heading"))
+    : 0.82;
+
+  if(Math.random() < headerChance){
     addGoal(home,scorer,creator,"powers home a header from a corner");
   }else{
     addEvent(time,`${scorer} rises for the header but sends it wide.`);
