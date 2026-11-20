@@ -238,7 +238,14 @@ const players = [
 let state = JSON.parse(localStorage.getItem("ffl2027demo") || "null") || {
  club:"",manager:"",kit:"#16b878",packs:3,cards:[],squad:[],captain:""
 };
-function save(){localStorage.setItem("ffl2027demo",JSON.stringify(state));updateHome()}
+function save(){
+  localStorage.setItem("ffl2027demo",JSON.stringify(state));
+  updateHome();
+
+  if(window.fflSaveCloud){
+    window.fflSaveCloud();
+  }
+}
 function showPage(page){
  document.querySelectorAll("main section").forEach(s=>s.classList.add("hidden"));
  document.getElementById(page).classList.remove("hidden");
