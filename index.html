@@ -327,21 +327,60 @@ function saveClub(){
 function makeCard(player,tier){
  return {id:Date.now()+Math.random(),name:player[0],position:player[1],tier};
 }
+
 function openPack(){
-   if(players.length===0){
-   document.getElementById("packMessage").textContent="Player database is still loading. Please try again shortly.";
-   return;
- }
- if(state.packs<=0){document.getElementById("packMessage").textContent="No free packs left today in this demo.";return}
- state.packs--;
- let r=Math.random()*100,tier=r<65?"bronze":r<90?"silver":"gold";
- let player=players[Math.floor(Math.random()*players.length)];
- let existing=state.cards.find(c=>c.name===player[0]&&c.tier===tier);
- if(existing){existing.duplicate=(existing.duplicate||0)+1;document.getElementById("packMessage").textContent="Duplicate collected! Your "+tier+" "+player[0]+" has been upgraded."}
- else {state.cards.push(makeCard(player,tier));document.getElementById("packMessage").textContent="You found "+player[0]+"!"}
- document.getElementById("packReveal").innerHTML=cardHTML({name:player[0],position:player[1],tier});
- save();renderCards();
+  if(players.length===0){
+    document.getElementById("packMessage").textContent=
+      "Player database is still loading. Please try again shortly.";
+    return;
+  }
+
+  // Read the new inventory, while preserving older saves.
+  state.inventory ??= {};
+  state.inventory.packs ??= {
+    normal: Number(state.packs) || 0
+  };
+  state.inventory.packs.normal ??= Number(state.packs) || 0;
+
+  if(state.inventory.packs.normal<=0){
+    document.getElementById("packMessage").textContent=
+      "You don't have any normal packs.";
+    return;
+  }
+
+  // Deduct one pack.
+  state.inventory.packs.normal--;
+
+  // Keep the old pack counter synchronised during migration.
+  state.packs=state.inventory.packs.normal;
+
+  // New rarity odds: 80% bronze, 19% silver, 1% gold.
+  const r=Math.random()*100;
+  const tier=r<80?"bronze":r<99?"silver":"gold";
+
+  const player=players[Math.floor(Math.random()*players.length)];
+
+  const existing=state.cards.find(
+    c=>c.name===player[0] && c.tier===tier
+  );
+
+  if(existing){
+    existing.duplicate=(existing.duplicate||0)+1;
+    document.getElementById("packMessage").textContent=
+      "Duplicate collected! Your "+tier+" "+player[0]+" has been upgraded.";
+  }else{
+    state.cards.push(makeCard(player,tier));
+    document.getElementById("packMessage").textContent=
+      "You found "+player[0]+"!";
+  }
+
+  document.getElementById("packReveal").innerHTML=
+    cardHTML({name:player[0],position:player[1],tier});
+
+  save();
+  renderCards();
 }
+
 function cardHTML(c){
  let title=c.tier==="inform"?"IN-FORM":c.tier.toUpperCase();
  return `<div class="player-card ${c.tier}"><div class="tier">${title}</div><div><div class="name">${c.name}</div><div class="position">${c.position}</div></div><div class="footer"><span>FFL 2027</span><span>${c.duplicate? "DUPLICATES "+c.duplicate:"PLAYER"}</span></div></div>`;
