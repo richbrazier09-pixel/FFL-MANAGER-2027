@@ -679,14 +679,16 @@ function playMatch(){
   const originalLineup = (state.lineup || []).slice(0,11);
   const activePlayers = originalLineup.filter(Boolean);
   const playerData = name => {
-    const card = state.cards.find(c => c.name === name);
-    const player = players.find(p => p[0] === name);
-    return {
-      name,
-      position: card?.position || player?.[1] || "",
-      tier: card?.tier || "bronze"
-    };
+  const card = state.cards.find(c => c.name === name);
+  const player = players.find(p => p[0] === name);
+
+  return {
+    name,
+    position: card?.position || player?.[1] || "",
+    tier: card?.tier || "bronze",
+    traits: Array.isArray(player?.Traits) ? player.Traits : []
   };
+};
 
   const homeName = state.club || "Your Club";
   const awayName = "FFL Opponents";
@@ -764,37 +766,78 @@ function playMatch(){
       : fallback;
   }
 
-  function getStrength(){
-    const names = activeNames();
-    let base = 0;
-    let misplaced = 0;
+ function getStrength(){
+  const names = activeNames();
+  let base = 0;
+  let misplaced = 0;
 
-    names.forEach(name => {
-      const data = playerData(name);
-      const tierBonus = {bronze:0,silver:2,gold:4,inform:6};
-      base += 7 + (tierBonus[data.tier] || 0);
-    });
-
-    originalLineup.forEach((name,index) => {
-      if(!name || sentOff.has(name) || substitutedOff.has(name)) return;
-      const groups = positionGroups(playerData(name).position);
-      if(groups.length && !groups.includes("UNKNOWN") &&
-         expected[index] && !groups.includes(expected[index])){
-        misplaced++;
-      }
-    });
-
-    const missing = Math.max(0,11-names.length);
-    const squadPenalty = Math.min(0.4,missing*0.1);
-    const positionPenalty = misplaced*0.7;
-
-    return {
-      value:Math.max(0,(base-positionPenalty)*(1-squadPenalty)),
-      missing,
-      misplaced,
-      squadPenalty
+  names.forEach(name => {
+    const data = playerData(name);
+    const tierBonus = {
+      bronze: 0,
+      silver: 0.21,
+      gold: 0.42,
+      inform: 0.7
     };
-  }
+
+    base += 7 + (tierBonus[data.tier] || 0);
+  });
+
+  originalLineup.forEach((name,index) => {
+    if(!name || sentOff.has(name) || substitutedOff.has(name)) return;
+    const groups = positionGroups(playerData(name).position);
+
+    if(groups.length && !groups.includes("UNKNOWN") &&
+       expected[index] && !groups.includes(expected[index])){
+      misplaced++;
+    }
+  });
+
+  const missing = Math.max(0,11-names.length);
+  const squadPenalty = Math.min(0.4,missing*0.1);
+  const positionPenalty = misplaced*0.7;
+
+  return {
+    value:Math.max(0,(base-positionPenalty)*(1-squadPenalty)),
+    missing,
+    misplaced,
+    squadPenalty
+  };
+}
+
+function getTraitBoost(name, trait){
+  const traits = playerData(name).traits.map(t =>
+    String(t).toLowerCase()
+  );
+
+  const tierBoost = {
+    bronze: 0,
+    silver: 0.03,
+    gold: 0.06,
+    inform: 0.10
+  };
+
+  const tier = tierBoost[playerData(name).tier] || 0;
+  const hasTrait = traits.includes(trait.toLowerCase());
+
+  return tier + (hasTrait ? 0.05 : 0);
+}
+
+function getFatigueRate(name){
+  const traits = playerData(name).traits.map(t =>
+    String(t).toLowerCase()
+  );
+
+  let rate = 1;
+
+  if(traits.includes("stamina")) rate -= 0.15;
+  if(traits.includes("work rate")) rate += 0.15;
+
+  const medicalLevel = Number(state.facilities?.medicalCentre) || 1;
+  rate -= (medicalLevel - 1) * 0.02;
+
+  return Math.max(0.75, Math.min(1.15, rate));
+}
 
   function awardRating(name,amount){
     if(!name || !ratings[name]) return;
