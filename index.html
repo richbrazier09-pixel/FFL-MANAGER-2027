@@ -545,7 +545,19 @@ if (importBtn) {
     updateHome();
     renderCards();
     renderSquad();
+try {
+  const playersRef = collection(db, "players");
+  const playersSnapshot = await getDocs(playersRef);
 
+  window.fflPlayers = playersSnapshot.docs.map(docSnap => ({
+    id: docSnap.id,
+    ...docSnap.data()
+  }));
+
+  console.log("Loaded players from Firebase:", window.fflPlayers.length);
+} catch (error) {
+  console.error("Could not load players:", error);
+}
     cloudReady = true;
 
     if(status) {
