@@ -687,7 +687,7 @@ function playMatch(){
     name,
     position: card?.position || player?.[1] || "",
     tier: card?.tier || "bronze",
-    traits: Array.isArray(player?.Traits) ? player.Traits : []
+    traits: Array.isArray(player?.[2]) ? player[2] : []
   };
 };
 
