@@ -257,6 +257,7 @@ function updateHome(){
  document.getElementById("cardStat").textContent=state.cards.length;
  document.getElementById("packStat").textContent=state.packs;
 }
+  window.updateHome = updateHome;
 function saveClub(){
  state.manager=document.getElementById("managerName").value.trim();
  state.club=document.getElementById("clubName").value.trim();
