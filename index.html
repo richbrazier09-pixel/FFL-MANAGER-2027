@@ -310,7 +310,10 @@ function renderSquad(){
  let owned=[...new Set(state.cards.map(c=>c.name))];
  let list=document.getElementById("squadList");
 
- state.lineup = state.lineup || [];
+ state.lineup=Array.from(
+  {length:11},
+  (_,i)=>state.lineup?.[i] || ""
+);
 
  list.innerHTML=owned.length?owned.map(name=>{
    let p=players.find(x=>x[0]===name) || [name,"Unknown"];
@@ -373,7 +376,10 @@ function renderSquad(){
 }
 
 function setLineup(slot,name){
- state.lineup=state.lineup||[];
+state.lineup=Array.from(
+  {length:11},
+  (_,i)=>state.lineup?.[i] || ""
+);
 
  // Prevent the same player occupying two positions
  if(name && state.lineup.some((n,i)=>n===name&&i!==slot)){
