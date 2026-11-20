@@ -446,6 +446,70 @@ function openPack(){
   save();
   renderCards();
 }
+  
+function updateShop(){
+  if(!state.inventory) return;
+
+  const coins = state.economy?.coins || 0;
+  const packs = state.inventory.packs?.normal || 0;
+  const powerUps = state.inventory.powerUps || {};
+
+  document.getElementById("shopCoins").textContent = coins;
+  document.getElementById("shopPacks").textContent = packs;
+
+  const totalPowerUps = Object.values(powerUps)
+    .reduce((total, amount) => total + (Number(amount) || 0), 0);
+
+  document.getElementById("shopPowerUps").textContent = totalPowerUps;
+
+  document.getElementById("shopInventory").innerHTML = `
+    <p>Super Sub: ${powerUps.superSub || 0}</p>
+    <p>Adrenaline: ${powerUps.adrenaline || 0}</p>
+    <p>Defensive Lock: ${powerUps.defensiveLock || 0}</p>
+    <p>Dead Ball Specialist: ${powerUps.deadBallSpecialist || 0}</p>
+  `;
+}
+
+function buyNormalPack(){
+  const price = 100;
+
+  if(state.economy.coins < price){
+    document.getElementById("shopPackMessage").textContent =
+      "You don't have enough coins.";
+    return;
+  }
+
+  state.economy.coins -= price;
+  state.inventory.packs.normal =
+    (state.inventory.packs.normal || 0) + 1;
+
+  state.packs = state.inventory.packs.normal;
+
+  document.getElementById("shopPackMessage").textContent =
+    "Normal pack purchased! You can open it in the Packs tab.";
+
+  save();
+  updateShop();
+}
+
+function buyPowerUp(type,price){
+  if(state.economy.coins < price){
+    document.getElementById("shopPowerMessage").textContent =
+      "You don't have enough coins.";
+    return;
+  }
+
+  state.economy.coins -= price;
+  state.inventory.powerUps[type] =
+    (state.inventory.powerUps[type] || 0) + 1;
+
+  document.getElementById("shopPowerMessage").textContent =
+    "Power-up purchased successfully!";
+
+  save();
+  updateShop();
+}
+
 
 function cardHTML(c){
  let title=c.tier==="inform"?"IN-FORM":c.tier.toUpperCase();
