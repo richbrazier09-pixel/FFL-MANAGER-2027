@@ -472,6 +472,14 @@ window.fflSaveCloud = async function(){
 
 onAuthStateChanged(auth, async user => {
   activeUser = user;
+  const importBtn = document.getElementById("importPlayersBtn");
+
+if (importBtn) {
+  importBtn.style.display =
+    user && user.uid === ADMIN_UID ? "inline-block" : "none";
+
+  importBtn.onclick = window.importFFLPlayers;
+}
   cloudReady = false;
 
   if(!user) {
