@@ -217,7 +217,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
 <script>
 let players = [];
 
-window.updatePlayersFromFirebase = function() };
+window.updatePlayersFromFirebase = function() {
   if (!window.fflPlayers || window.fflPlayers.length === 0) {
     console.warn("Firebase player database is not loaded yet.");
     return;
@@ -229,10 +229,7 @@ window.updatePlayersFromFirebase = function() };
   ]);
 
   console.log("Game player list updated:", players.length);
-}
-
-  console.log("Game player list updated:", players.length);
-}
+};
 let state = JSON.parse(localStorage.getItem("ffl2027demo") || "null") || {
  club:"",manager:"",kit:"#16b878",packs:3,cards:[],squad:[],captain:""
 };
@@ -387,7 +384,7 @@ onAuthStateChanged(auth, user => {
  
 
 console.log("FFL Manager Firebase connected!");
-    window.updatePlayersFromFirebase();
+    
 
 let activeUser = null;
     const ADMIN_UID = "WpcAoxjb5fNJmwV2mUVJeHvSbx53";
@@ -561,6 +558,7 @@ try {
   }));
 
   console.log("Loaded players from Firebase:", window.fflPlayers.length);
+  window.updatePlayersFromFirebase();
 } catch (error) {
   console.error("Could not load players:", error);
 }
