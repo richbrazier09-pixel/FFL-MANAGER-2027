@@ -520,7 +520,19 @@ if (importBtn) {
       const cloudData = snapshot.data() || {};
       delete cloudData.updatedAt;
 
-      Object.assign(window.fflState, cloudData);
+      window.fflState = window.fflState || {
+  club: "",
+  manager: "",
+  kit: "#16b878",
+  packs: 3,
+  cards: [],
+  squad: [],
+  captain: ""
+};
+
+Object.assign(window.fflState, cloudData);
+window.fflState.cards = window.fflState.cards || [];
+window.fflState.squad = window.fflState.squad || [];
 
       localStorage.setItem(
         "ffl2027demo",
