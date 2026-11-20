@@ -284,5 +284,35 @@ function playMatch(){
 }
 updateHome();
 </script>
+  <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-auth.js";
+  import { getFirestore } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBjZQRbdOb3e6ZjEGdqYb4E3t11ncG8_20",
+    authDomain: "ffl-manager-2027.firebaseapp.com",
+    projectId: "ffl-manager-2027",
+    storageBucket: "ffl-manager-2027.firebasestorage.app",
+    messagingSenderId: "897938382829",
+    appId: "1:897938382829:web:14aed50e41fea9db7111e4",
+    measurementId: "G-97PXK1M1JW"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  window.fflFirebase = {
+    auth,
+    db,
+    signIn: () => signInWithPopup(auth, provider),
+    signOut: () => signOut(auth),
+    onAuthStateChanged: callback => onAuthStateChanged(auth, callback)
+  };
+
+  console.log("FFL Manager Firebase connected!");
+</script>
 </body>
 </html>
