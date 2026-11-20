@@ -333,6 +333,8 @@ lines.slice().reverse().forEach(count=>{
 html+='<div class="pitch-line"><div class="pitch-player">GK</div></div>';
 
 document.getElementById("pitch").innerHTML=html;
+}
+
 function toggleSquad(name){
  if(state.squad.includes(name))state.squad=state.squad.filter(n=>n!==name);
  else if(state.squad.length<11)state.squad.push(name);
