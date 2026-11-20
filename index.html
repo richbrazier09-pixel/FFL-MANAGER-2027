@@ -93,17 +93,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
     }
   });
 
-  window.fflFirebase.onAuthStateChanged(user => {
-    if (user) {
-      accountStatus.textContent = "Welcome, " + (user.displayName || user.email);
-      signInButton.style.display = "none";
-      signOutButton.style.display = "inline-block";
-    } else {
-      accountStatus.textContent = "";
-      signInButton.style.display = "inline-block";
-      signOutButton.style.display = "none";
-    }
-  });
+ 
 </script>
   <button class="active" data-page="home">Home</button>
   <button data-page="club">My Club</button>
@@ -481,103 +471,6 @@ onAuthStateChanged(auth, async user => {
 });
 
 
-let activeUser = null;
-let cloudReady = false;
-
-window.fflSaveCloud = async function(){
-  if(!activeUser || !cloudReady) return;
-
-  try {
-    const clubRef = doc(db, "clubs", activeUser.uid);
-
-    await setDoc(clubRef, {
-      ...window.fflState,
-      updatedAt: new Date().toISOString()
-    });
-
-    localStorage.setItem("ffl2027owner", activeUser.uid);
-    console.log("Club saved to cloud!");
-  } catch(error) {
-    console.error("Cloud save failed:", error);
-    document.getElementById("accountStatus").textContent =
-      "Cloud save failed: " + error.message;
-  }
-};
-
-onAuthStateChanged(auth, async user => {
-  activeUser = user;
-  cloudReady = false;
-
-  if(!user) return;
-
-  const status = document.getElementById("accountStatus");
-  status.textContent = "Loading your club...";
-
-  try {
-    const clubRef = doc(db, "clubs", user.uid);
-    const snapshot = await getDoc(clubRef);
-
-    if(snapshot.exists()){
-      const cloudData = snapshot.data();
-      delete cloudData.updatedAt;
-
-      Object.assign(window.fflState, cloudData);
-
-      localStorage.setItem(
-        "ffl2027demo",
-        JSON.stringify(window.fflState)
-      );
-
-    } else {
-      const localOwner = localStorage.getItem("ffl2027owner");
-
-      if(localOwner && localOwner !== user.uid){
-        Object.assign(window.fflState, {
-          club:"",
-          manager:"",
-          kit:"#16b878",
-          packs:3,
-          cards:[],
-          squad:[],
-          captain:""
-        });
-      }
-
-      await setDoc(clubRef, {
-        ...window.fflState,
-        updatedAt: new Date().toISOString()
-      });
-    }
-
-    localStorage.setItem("ffl2027owner", user.uid);
-    localStorage.setItem(
-      "ffl2027demo",
-      JSON.stringify(window.fflState)
-    );
-
-    document.getElementById("managerName").value =
-      window.fflState.manager || "";
-
-    document.getElementById("clubName").value =
-      window.fflState.club || "";
-
-    document.getElementById("kitColour").value =
-      window.fflState.kit || "#16b878";
-
-    updateHome();
-    renderCards();
-    renderSquad();
-
-    cloudReady = true;
-    status.textContent =
-      "Welcome, " + (user.displayName || user.email) +
-      " · Club synced";
-
-  } catch(error) {
-    console.error("Cloud loading failed:", error);
-    status.textContent = "Cloud error: " + error.message;
-  }
-});
 
 </script>
 </body>
