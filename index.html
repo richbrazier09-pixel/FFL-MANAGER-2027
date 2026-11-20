@@ -283,15 +283,16 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
 <script>
   let players = [];
 
-  window.updatePlayersFromFirebase = function() {
-    if (!window.fflPlayers || window.fflPlayers.length === 0) {
-      console.warn("Firebase player database is not loaded yet.");
-      return;
-    }
+window.updatePlayersFromFirebase = function() {
+  if (!window.fflPlayers || window.fflPlayers.length === 0) {
+    console.warn("Firebase player database is not loaded yet.");
+    return;
+  }
 
-    players = window.fflPlayers.map(player => [
-      player.name,
-      player.position
+  players = window.fflPlayers.map(player => [
+    player.name,
+    player.position,
+    Array.isArray(player.Traits) ? player.Traits : []
   ]);
 
   console.log("Game player list updated:", players.length);
