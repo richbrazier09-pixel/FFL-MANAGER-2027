@@ -217,7 +217,7 @@ footer{text-align:center;padding:25px;color:var(--muted);font-size:12px}
 <script>
 let players = [];
 
-function updatePlayersFromFirebase() {
+window.updatePlayersFromFirebase = function() {
   if (!window.fflPlayers || window.fflPlayers.length === 0) {
     console.warn("Firebase player database is not loaded yet.");
     return;
@@ -387,7 +387,7 @@ onAuthStateChanged(auth, user => {
  
 
 console.log("FFL Manager Firebase connected!");
-    updatePlayersFromFirebase();
+    window.updatePlayersFromFirebase();
 
 let activeUser = null;
     const ADMIN_UID = "WpcAoxjb5fNJmwV2mUVJeHvSbx53";
