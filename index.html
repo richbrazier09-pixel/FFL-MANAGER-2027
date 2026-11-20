@@ -1230,14 +1230,28 @@ function getFatigueRate(name){
         : "Opponent defender";
       straightRed(home,dismissed);
     }else if(roll<0.70){
-      const tackler = home
-        ? choose(defence,"Your defender")
-        : "Opponent defender";
+  const tackler = home
+    ? choose(defence,"Your defender")
+    : "Opponent defender";
+
+  if(!home){
+    addEvent(time,`${tackler} makes a crucial challenge to stop the attack.`);
+  }else{
+    const tackleSuccess = Math.min(
+      0.95,
+      0.75 * getActionMultiplier(tackler,"tackling")
+    );
+
+    if(Math.random() < tackleSuccess){
       addEvent(time,`${tackler} makes a crucial challenge to stop the attack.`);
-      if(home && ratings[tackler]){
+      if(ratings[tackler]){
         stats[tackler].tackles++;
         awardRating(tackler,0.15);
       }
+    }else{
+      addEvent(time,`${tackler} mistimes the challenge and the opposition gets away.`);
+    }
+  }
     }else{
       addEvent(time,`${team} recycle possession and try to build another attack.`);
     }
