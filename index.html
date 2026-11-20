@@ -308,7 +308,7 @@ function renderSquad(){
  let owned=[...new Set(state.cards.map(c=>c.name))];
  let list=document.getElementById("squadList");
  list.innerHTML=owned.length?owned.map(name=>{
- let p=players.find(x=>x[0]===name);
+ let p=players.find(x=>x[0]===name) || [name, "Unknown"];
  let selected=state.squad.includes(name)?" selected":"";
  return `<div class="squad-row"><span>${name} <small>${p[1]}</small></span><button class="secondary" onclick="toggleSquad('${name.replace(/'/g,"")}')">${selected?"Remove":"Add"}</button></div>`;
  }).join(""):"<p>Open packs to collect players for your squad.</p>";
