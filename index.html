@@ -838,6 +838,18 @@ function getFatigueRate(name){
 
   return Math.max(0.75, Math.min(1.15, rate));
 }
+  function getPlayerFitness(name){
+  const elapsedMinutes = currentHalf === 1
+    ? currentMinute
+    : 45 + currentMinute;
+
+  const fatigue = Math.min(
+    0.08,
+    (elapsedMinutes / 90) * 0.08 * getFatigueRate(name)
+  );
+
+  return 1 - fatigue;
+}
 
   function awardRating(name,amount){
     if(!name || !ratings[name]) return;
