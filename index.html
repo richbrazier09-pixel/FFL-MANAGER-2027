@@ -1195,7 +1195,7 @@ function generateEvent(){
     recordStat(home, "shots");
     recordStat(home, "shotsOffTarget");
     if(home && stats[scorer]) stats[scorer].shots++;
-  }else if(roll<0.42){
+  }else if(roll<0.38){
     addEvent(time,`A brilliant save denies ${scorer}!`);
         recordStat(home, "shots");
     recordStat(home, "shotsOnTarget");
@@ -1205,7 +1205,7 @@ function generateEvent(){
       awardRating(savedBy,0.3);
     }
 
-  }else if(roll<0.40){
+  }else if(roll<0.42){
     addEvent(time,`The ball strikes the post! ${team} are inches away.`);
         recordStat(home, "shots");
     recordStat(home, "shotsOffTarget");
@@ -1283,13 +1283,13 @@ function generateEvent(){
       }
     }
 
-  }else if(roll<0.85){
+  }else if(roll<0.83){
     const booked = home
       ? choose([...defence,...mids],"Your player")
       : "Opponent defender";
     bookPlayer(home,booked);
 
-  }else if(roll<0.821){
+  }else if(roll<0.85){
     const dismissed = home
       ? choose([...defence,...mids,...attack],"Your player")
       : "Opponent defender";
@@ -1489,16 +1489,7 @@ for (let pass = 0; pass < passAttempts; pass++) {
         recordStat(lastPossession, "passesCompleted");
     }
 }
-      // Simulate ordinary passing during this minute
-const passAttempts = 5 + Math.floor(Math.random() * 4);
-
-for (let pass = 0; pass < passAttempts; pass++) {
-    recordStat(lastPossession, "passesAttempted");
-
-    if (Math.random() < 0.85) {
-        recordStat(lastPossession, "passesCompleted");
-    }
-}
+      
 
       if(minute>=nextEvent){
         generateEvent();
