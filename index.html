@@ -1219,11 +1219,10 @@ function getFatigueRate(name){
     );
 
     if(Math.random() < dribbleSuccess){
-      addEvent(time,`${dribbler beats a defender with a clever dribble and starts a counter-attack.`);
-    }else{
-      addEvent(time,`${dribbler tries to beat a defender but loses possession.`);
-    }
-  }
+  addEvent(time,`${dribbler} beats a defender with a clever dribble and starts a counter-attack.`);
+}else{
+  addEvent(time,`${dribbler} tries to beat a defender but loses possession.`);
+}
     }else if(roll<0.66){
       const booked = home
         ? choose([...defence,...mids],"Your player")
