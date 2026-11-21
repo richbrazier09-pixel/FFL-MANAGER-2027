@@ -289,11 +289,11 @@ window.updatePlayersFromFirebase = function() {
     return;
   }
 
-  players = window.fflPlayers.map(player => [
-    player.name,
-    player.position,
-    Array.isArray(player.Traits) ? player.Traits : []
-  ]);
+ players = window.fflPlayers.map(player => [
+  player.name,
+  player.position,
+  Array.isArray(player.traits) ? player.traits : []
+]);
 
   console.log("Game player list updated:", players.length);
 };
@@ -305,60 +305,47 @@ let state = JSON.parse(localStorage.getItem("ffl2027demo") || "null") || {
 // FFL Manager 2027 — club progression data
 // Adds defaults to existing saves without wiping player or club data.
 
-state.economy ??= {
-  coins: 1000
-};
+function ensureClubProgression() {
+  state.economy ??= { coins: 1000 };
+  state.economy.coins ??= 1000;
 
-state.economy.coins ??= 1000;
+  state.inventory ??= {};
+  state.inventory.packs ??= { normal: Number(state.packs) || 0 };
+  state.inventory.packs.normal ??= Number(state.packs) || 0;
 
-state.inventory ??= {};
+  state.inventory.powerUps ??= {};
+  state.inventory.powerUps.superSub ??= 0;
+  state.inventory.powerUps.adrenaline ??= 0;
+  state.inventory.powerUps.defensiveLock ??= 0;
+  state.inventory.powerUps.deadBallSpecialist ??= 0;
 
-state.inventory.packs ??= {
-  normal: Number(state.packs) || 0
-};
+  state.stadium ??= {};
+  state.stadium.name ??= "Ellesmere Port College";
+  state.stadium.seatedCapacity ??= 0;
+  state.stadium.standingCapacity ??= 200;
+  state.stadium.fans ??= 0;
 
-// Migrate existing pack balances into the new inventory.
-state.inventory.packs.normal ??= Number(state.packs) || 0;
+  state.facilities ??= {};
+  state.facilities.trainingGround ??= 1;
+  state.facilities.medicalCentre ??= 1;
+  state.facilities.youthAcademy ??= 1;
+  state.facilities.scoutingNetwork ??= 1;
 
-state.inventory.powerUps ??= {
-  superSub: 0,
-  adrenaline: 0,
-  defensiveLock: 0,
-  deadBallSpecialist: 0
-};
+  state.training ??= {};
+  state.training.matchDayBoost ??= null;
+  state.training.individualPlayer ??= null;
+  state.training.individualTrainingDate ??= null;
 
-state.stadium ??= {
-  name: "Ellesmere Port College",
-  seatedCapacity: 0,
-  standingCapacity: 200,
-  fans: 0
-};
+  state.cards ??= [];
+  state.squad ??= [];
+  state.lineup ??= Array(11).fill("");
+  state.packs ??= state.inventory.packs.normal;
 
-state.stadium.name ??= "Ellesmere Port College";
-state.stadium.seatedCapacity ??= 0;
-state.stadium.standingCapacity ??= 200;
-state.stadium.fans ??= 0;
+  window.fflState = state;
+}
 
-state.facilities ??= {
-  trainingGround: 1,
-  medicalCentre: 1,
-  youthAcademy: 1,
-  scoutingNetwork: 1
-};
-
-state.facilities.trainingGround ??= 1;
-state.facilities.medicalCentre ??= 1;
-state.facilities.youthAcademy ??= 1;
-state.facilities.scoutingNetwork ??= 1;
-
-state.training ??= {
-  matchDayBoost: null,
-  individualPlayer: null,
-  individualTrainingDate: null
-};
-
-// Keep the existing global state reference.
-window.fflState = state;
+window.ensureClubProgression = ensureClubProgression;
+ensureClubProgression();
 
 function save(){
   localStorage.setItem("ffl2027demo",JSON.stringify(state));
@@ -1465,17 +1452,25 @@ window.importFFLPlayers = async function() {
     return;
   }
 
-  if (!confirm("Import all 33 players into Firestore? Existing player records will be updated.")) return;
+ if (!confirm("Import all 33 players into Firestore? Existing player records will be updated.")) return;
 
-  try {
-    for (const player of playerDatabase) {
-      const { id, ...data } = player;
-      await setDoc(doc(db, "players", id), {
-        ...data,
-        active: true
-      }, { merge: true });
-    }
+try {
+  for (const player of playerDatabase) {
+    const { id, ...data } = player;
+    await setDoc(doc(db, "players", id), {
+      ...data,
+      active: true
+    }, { merge: true });
+  }
 
+  window.fflPlayers = playerDatabase.map(player => ({
+    ...player,
+    active: true
+  }));
+
+  window.updatePlayersFromFirebase();
+
+  // Keep any existing success message here.
     alert("Successfully imported all 33 players!");
   } catch (error) {
     console.error(error);
@@ -1549,6 +1544,7 @@ if (importBtn) {
 };
 
 Object.assign(window.fflState, cloudData);
+      window.ensureClubProgression();
 window.fflState.cards = window.fflState.cards || [];
 window.fflState.squad = window.fflState.squad || [];
 
