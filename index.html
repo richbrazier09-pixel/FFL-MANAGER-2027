@@ -1191,12 +1191,12 @@ function generateEvent(){
       addEvent(time,`${passer} attempts a pass but the opposition intercepts.`);
     }
 
- }else if(roll<0.28){
+ }else if(roll<0.30){
     addEvent(time,`${scorer} gets a sight of goal but fires narrowly wide.`);
     recordStat(home, "shots");
     recordStat(home, "shotsOffTarget");
     if(home && stats[scorer]) stats[scorer].shots++;
-  }else if(roll<0.37){
+  }else if(roll<0.42){
     addEvent(time,`A brilliant save denies ${scorer}!`);
         recordStat(home, "shots");
     recordStat(home, "shotsOnTarget");
@@ -1217,8 +1217,8 @@ function generateEvent(){
     if(home && stats[scorer]) stats[scorer].shots++;
 
     const conversionChance = home
-      ? Math.min(0.95,0.82*getActionMultiplier(scorer,"shooting"))
-      : 0.82;
+      ? Math.min(0.90,0.68*getActionMultiplier(scorer,"shooting"))
+: 0.68;
 
     if(Math.random()<conversionChance){
       recordStat(home, "shotsOnTarget");
@@ -1234,8 +1234,8 @@ function generateEvent(){
     if(home && stats[scorer]) stats[scorer].shots++;
 
     const headerChance = home
-      ? Math.min(0.95,0.82*getActionMultiplier(scorer,"heading"))
-      : 0.82;
+     ? Math.min(0.85,0.55*getActionMultiplier(scorer,"heading"))
+: 0.55;
 
     if(Math.random()<headerChance){
       recordStat(home, "shotsOnTarget");
@@ -1244,7 +1244,7 @@ function generateEvent(){
       recordStat(home, "shotsOffTarget");
       addEvent(time,`${scorer} rises for the header but sends it wide.`);
     }
-  }else if(roll<0.63){
+  }else if(roll<0.66){
     addEvent(time,`🚩 Corner for ${team}. The delivery causes problems.`);
         recordStat(home, "corners");
     if(powerEffects.deadBall && home && Math.random()<0.3){
@@ -1284,7 +1284,7 @@ function generateEvent(){
       }
     }
 
-  }else if(roll<0.82){
+  }else if(roll<0.85){
     const booked = home
       ? choose([...defence,...mids],"Your player")
       : "Opponent defender";
@@ -1456,12 +1456,48 @@ function generateEvent(){
     activeMatchTimer=setInterval(()=>{
       minute++;
       currentMinute=minute;
-            possessionSeconds[lastPossession] += 1;
-      matchStats[lastPossession].possession += 1;
+           // Simulate possession changing naturally throughout the match
+if (Math.random() < 0.12) {
+    lastPossession = lastPossession === "home" ? "away" : "home";
+}
+
+possessionSeconds[lastPossession] += 1;
+matchStats[lastPossession].possession += 1;
+
+// Simulate ordinary passing while a team has possession
+const passAttempts = 5 + Math.floor(Math.random() * 4);
+
+for (let pass = 0; pass < passAttempts; pass++) {
+    const passingPlayers = lastPossession === "home"
+        ? activeNames()
+        : ["Opponent midfielder", "Opponent defender", "Opponent winger"];
+
+    const passer = choose(passingPlayers, "Midfielder");
+
+    const successRate = lastPossession === "home"
+        ? Math.min(0.95, 0.78 * getActionMultiplier(passer, "passing"))
+        : 0.82;
+
+    recordStat(lastPossession, "passesAttempted");
+
+    if (Math.random() < successRate) {
+        recordStat(lastPossession, "passesCompleted");
+    }
+}
+      // Simulate ordinary passing during this minute
+const passAttempts = 5 + Math.floor(Math.random() * 4);
+
+for (let pass = 0; pass < passAttempts; pass++) {
+    recordStat(lastPossession, "passesAttempted");
+
+    if (Math.random() < 0.85) {
+        recordStat(lastPossession, "passesCompleted");
+    }
+}
 
       if(minute>=nextEvent){
         generateEvent();
-        nextEvent+=5+Math.floor(Math.random()*5);
+       nextEvent+=3+Math.floor(Math.random()*3);
       }
 
       if(powerEffects.adrenaline && half===2 && minute>25 && minute%8===0){
