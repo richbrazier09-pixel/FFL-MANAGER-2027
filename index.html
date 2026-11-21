@@ -1144,10 +1144,11 @@ function getFatigueRate(name){
   }
 
   
+
 function generateEvent(){
   const homeStrength = getStrength().value;
-  const homeChance = Math.max(0.25,Math.min(0.75,
-    0.5+(homeStrength-oppositionStrength)/180
+  const homeChance = Math.max(0.25, Math.min(0.75,
+    0.5 + (homeStrength - oppositionStrength) / 180
   ));
 
   const home = Math.random() < homeChance;
@@ -1158,172 +1159,281 @@ function generateEvent(){
   const keeper = groupPlayers("GK");
 
   const scorer = home
-    ? choose(attack,choose(mids,"Your player"))
+    ? choose(attack, choose(mids, "Your player"))
     : "Opponent striker";
 
   const creator = home
-    ? choose(mids,choose(attack,"Your player"))
+    ? choose(mids, choose(attack, "Your player"))
     : "Opponent midfielder";
 
-  const time = clockLabel(currentHalf,currentMinute);
+  const time = clockLabel(currentHalf, currentMinute);
   const roll = Math.random();
 
-  if(roll<0.05){
-    addEvent(time,`${team} keep possession and patiently search for space.`);
+  // POSSESSION AND BUILD-UP
+  if(roll < 0.04){
+    addEvent(time, `${team} patiently build possession and look for an opening.`);
 
- }else if(roll<0.18){
+  }else if(roll < 0.10){
+    const passer = home ? choose(mids, creator) : "Opponent midfielder";
     recordStat(home, "passesAttempted");
 
-    const passer = home ? choose(mids,creator) : "Opponent midfielder";
-    const passingSuccess = home
-      ? Math.min(0.95,0.75*getActionMultiplier(passer,"passing"))
-      : 0.8;
+    const success = home
+      ? Math.min(0.96, 0.78 * getActionMultiplier(passer, "passing"))
+      : 0.84;
 
-    if(Math.random()<passingSuccess){
+    if(Math.random() < success){
       recordStat(home, "passesCompleted");
-      if(home){
-        addEvent(time,`${passer} picks out a dangerous pass. ${scorer} receives the ball.`);
+      addEvent(time, `${passer} plays a clever pass and ${scorer} moves into space.`);
+    }else{
+      addEvent(time, `${passer} misplaces the pass and possession changes hands.`);
+    }
+
+  // THROUGH BALLS AND COUNTER-ATTACKS
+  }else if(roll < 0.18){
+    if(home){
+      const passer = choose(mids, creator);
+      const passingSkill = Math.min(0.95, 0.75 * getActionMultiplier(passer, "passing"));
+
+      if(Math.random() < passingSkill){
+        addEvent(time, `${passer} splits the defence with a brilliant through ball! ${scorer} is through on goal!`);
+
+        recordStat(home, "shots");
+        if(stats[scorer]) stats[scorer].shots++;
+
+        const finish = Math.min(0.85, 0.55 * getActionMultiplier(scorer, "shooting"));
+
+        if(Math.random() < finish){
+          recordStat(home, "shotsOnTarget");
+          addGoal(true, scorer, passer, "finishes a superb through-ball move");
+        }else{
+          recordStat(home, "shotsOffTarget");
+          addEvent(time, `${scorer} cannot beat the goalkeeper from close range.`);
+        }
       }else{
-        addEvent(time,`${team} work the ball wide and deliver a dangerous cross.`);
+        addEvent(time, `${passer} tries a through ball but the defence reads it.`);
       }
     }else{
-      addEvent(time,`${passer} attempts a pass but the opposition intercepts.`);
+      addEvent(time, `${team} break quickly on the counter-attack!`);
     }
 
- }else if(roll<0.30){
-    addEvent(time,`${scorer} gets a sight of goal but fires narrowly wide.`);
-    recordStat(home, "shots");
-    recordStat(home, "shotsOffTarget");
-    if(home && stats[scorer]) stats[scorer].shots++;
-  }else if(roll<0.38){
-    addEvent(time,`A brilliant save denies ${scorer}!`);
-        recordStat(home, "shots");
-    recordStat(home, "shotsOnTarget");
-    if(!home && keeper.length){
-      const savedBy = choose(keeper,"Your goalkeeper");
-      if(stats[savedBy]) stats[savedBy].saves++;
-      awardRating(savedBy,0.3);
-    }
-
-  }else if(roll<0.42){
-    addEvent(time,`The ball strikes the post! ${team} are inches away.`);
-        recordStat(home, "shots");
-    recordStat(home, "shotsOffTarget");
-    if(home && stats[scorer]) stats[scorer].shots++;
-
- }else if(roll<0.52){
+  // SHOTS FROM OPEN PLAY
+  }else if(roll < 0.30){
     recordStat(home, "shots");
     if(home && stats[scorer]) stats[scorer].shots++;
 
-    const conversionChance = home
-      ? Math.min(0.90,0.68*getActionMultiplier(scorer,"shooting"))
-: 0.68;
+    const finish = home
+      ? Math.min(0.90, 0.68 * getActionMultiplier(scorer, "shooting"))
+      : 0.68;
 
-    if(Math.random()<conversionChance){
+    if(Math.random() < finish){
       recordStat(home, "shotsOnTarget");
-      addGoal(home,scorer,creator,"finishes a flowing move");
+      addGoal(home, scorer, creator, "fires a powerful shot into the net");
     }else{
       recordStat(home, "shotsOffTarget");
-      addEvent(time,`${scorer} gets the chance but cannot quite find the finish.`);
+      addEvent(time, `${scorer} shoots from the edge of the box but sends it wide.`);
     }
-      
 
-  }else if(roll<0.57){
+  // ONE-ON-ONE CHANCE
+  }else if(roll < 0.37){
     recordStat(home, "shots");
+    if(home && stats[scorer]) stats[scorer].shots++;
+
+    const finish = home
+      ? Math.min(0.90, 0.72 * getActionMultiplier(scorer, "shooting"))
+      : 0.72;
+
+    if(Math.random() < finish){
+      recordStat(home, "shotsOnTarget");
+      addGoal(home, scorer, creator, "slots home after going one-on-one with the goalkeeper");
+    }else{
+      recordStat(home, "shotsOnTarget");
+      addEvent(time, `${scorer} goes one-on-one but the goalkeeper makes a fantastic save!`);
+
+      if(!home && keeper.length){
+        const savedBy = choose(keeper, "Your goalkeeper");
+        if(stats[savedBy]) stats[savedBy].saves++;
+        awardRating(savedBy, 0.4);
+      }
+    }
+
+  // LONG-RANGE SHOT
+  }else if(roll < 0.43){
+    recordStat(home, "shots");
+    if(home && stats[scorer]) stats[scorer].shots++;
+
+    if(Math.random() < 0.25){
+      recordStat(home, "shotsOnTarget");
+      addEvent(time, `${scorer} unleashes a long-range effort, forcing a brilliant save!`);
+
+      if(!home && keeper.length){
+        const savedBy = choose(keeper, "Your goalkeeper");
+        if(stats[savedBy]) stats[savedBy].saves++;
+        awardRating(savedBy, 0.3);
+      }
+    }else{
+      recordStat(home, "shotsOffTarget");
+      addEvent(time, `${scorer} tries their luck from distance but the shot flies over.`);
+    }
+
+  // CROSSES AND HEADERS
+  }else if(roll < 0.52){
+    const winger = home ? choose(attack, creator) : "Opponent winger";
+
+    addEvent(time, `${winger} delivers a dangerous cross into the penalty area!`);
+
+    recordStat(home, "shots");
+
     if(home && stats[scorer]) stats[scorer].shots++;
 
     const headerChance = home
-     ? Math.min(0.85,0.55*getActionMultiplier(scorer,"heading"))
-: 0.55;
+      ? Math.min(0.85, 0.58 * getActionMultiplier(scorer, "heading"))
+      : 0.58;
 
-    if(Math.random()<headerChance){
+    if(Math.random() < headerChance){
       recordStat(home, "shotsOnTarget");
-      addGoal(home,scorer,creator,"powers home a header from a corner");
+      addGoal(home, scorer, winger, "powers a header into the net");
     }else{
       recordStat(home, "shotsOffTarget");
-      addEvent(time,`${scorer} rises for the header but sends it wide.`);
-    }
-  }else if(roll<0.66){
-    addEvent(time,`🚩 Corner for ${team}. The delivery causes problems.`);
-        recordStat(home, "corners");
-    if(powerEffects.deadBall && home && Math.random()<0.3){
-      addGoal(true,scorer,creator,"scores from the boosted set piece");
+      addEvent(time, `${scorer} gets their head to the cross but cannot direct it on target.`);
     }
 
-  }else if(roll<0.68){
-    addEvent(time,`A free kick in a dangerous position for ${team}.`);
-    if(powerEffects.deadBall && home && Math.random()<0.25){
-      addGoal(true,scorer,creator,"scores from the free kick");
+  // SAVES AND REBOUNDS
+  }else if(roll < 0.58){
+    recordStat(home, "shots");
+    recordStat(home, "shotsOnTarget");
+    if(home && stats[scorer]) stats[scorer].shots++;
+
+    addEvent(time, `${scorer} shoots! The goalkeeper parries it away!`);
+
+    if(!home && keeper.length){
+      const savedBy = choose(keeper, "Your goalkeeper");
+      if(stats[savedBy]) stats[savedBy].saves++;
+      awardRating(savedBy, 0.3);
     }
 
-  }else if(roll<0.69){
+    if(Math.random() < 0.30){
+      addEvent(time, `${team} recover the rebound and launch another attack!`);
+    }
+
+  // WOODWORK
+  }else if(roll < 0.62){
+    recordStat(home, "shots");
+    recordStat(home, "shotsOffTarget");
+    if(home && stats[scorer]) stats[scorer].shots++;
+
+    addEvent(time, `${scorer} strikes the post! So close for ${team}!`);
+
+  // CORNERS
+  }else if(roll < 0.69){
+    recordStat(home, "corners");
+    addEvent(time, `🚩 Corner for ${team}. The ball is swung into the box!`);
+
+    if(Math.random() < 0.30){
+      recordStat(home, "shots");
+      if(home && stats[scorer]) stats[scorer].shots++;
+
+      if(Math.random() < 0.35){
+        recordStat(home, "shotsOnTarget");
+        addGoal(home, scorer, creator, "scores from a corner");
+      }else{
+        recordStat(home, "shotsOffTarget");
+        addEvent(time, `${scorer} gets a touch but sends the corner chance wide.`);
+      }
+    }
+
+  // FREE KICKS
+  }else if(roll < 0.73){
+    addEvent(time, `A free kick in a dangerous position for ${team}!`);
+
+    if(Math.random() < 0.35){
+      recordStat(home, "shots");
+      if(home && stats[scorer]) stats[scorer].shots++;
+
+      if(Math.random() < 0.30){
+        recordStat(home, "shotsOnTarget");
+        addGoal(home, scorer, creator, "scores from a free kick");
+      }else{
+        recordStat(home, "shotsOffTarget");
+        addEvent(time, `${scorer} curls the free kick just over the crossbar.`);
+      }
+    }
+
+  // PENALTIES
+  }else if(roll < 0.75){
     recordStat(home, "shots");
     recordStat(home, "shotsOnTarget");
 
-    if(Math.random()<0.72){
-      addGoal(home,scorer,creator,"converts the penalty");
+    if(Math.random() < 0.76){
+      addGoal(home, scorer, creator, "converts the penalty");
     }else{
-      addEvent(time,`PENALTY SAVED! The goalkeeper makes a huge stop.`);
-    }
+      addEvent(time, `PENALTY SAVED! The goalkeeper makes a huge stop!`);
 
-  }else if(roll<0.79){
-    if(!home){
-      addEvent(time,`${team} win possession and launch a quick counter-attack.`);
-    }else{
-      const dribbler = choose(attack,choose(mids,scorer));
-      const dribbleSuccess = Math.min(
-        0.95,
-        0.75*getActionMultiplier(dribbler,"dribbling")
-      );
-
-      if(Math.random()<dribbleSuccess){
-        addEvent(time,`${dribbler} beats a defender with a clever dribble and starts a counter-attack.`);
-      }else{
-        addEvent(time,`${dribbler} tries to beat a defender but loses possession.`);
+      if(!home && keeper.length){
+        const savedBy = choose(keeper, "Your goalkeeper");
+        if(stats[savedBy]) stats[savedBy].saves++;
+        awardRating(savedBy, 0.5);
       }
     }
 
-  }else if(roll<0.83){
-    const booked = home
-      ? choose([...defence,...mids],"Your player")
-      : "Opponent defender";
-    bookPlayer(home,booked);
+  // DRIBBLING
+  }else if(roll < 0.81){
+    if(home){
+      const dribbler = choose(attack, choose(mids, scorer));
+      const success = Math.min(0.95, 0.75 * getActionMultiplier(dribbler, "dribbling"));
 
-  }else if(roll<0.85){
-    const dismissed = home
-      ? choose([...defence,...mids,...attack],"Your player")
-      : "Opponent defender";
-    straightRed(home,dismissed);
-
-  }else if(roll<0.92){
-    const tackler = home
-      ? choose(defence,"Your defender")
-      : "Opponent defender";
-
-    if(!home){
-      addEvent(time,`${tackler} makes a crucial challenge to stop the attack.`);
+      if(Math.random() < success){
+        addEvent(time, `${dribbler} beats their marker with a brilliant dribble and drives towards goal!`);
+      }else{
+        addEvent(time, `${dribbler} tries to beat a defender but loses possession.`);
+      }
     }else{
-      const tackleSuccess = Math.min(
-        0.95,
-        0.75*getActionMultiplier(tackler,"tackling")
-      );
+      addEvent(time, `${team} work the ball forward with some clever dribbling.`);
+    }
 
-      if(Math.random()<tackleSuccess){
-        addEvent(time,`${tackler} makes a crucial challenge to stop the attack.`);
+  // TACKLES
+  }else if(roll < 0.87){
+    const tackler = home
+      ? choose(defence, "Your defender")
+      : "Opponent defender";
+
+    if(home){
+      const success = Math.min(0.95, 0.75 * getActionMultiplier(tackler, "tackling"));
+
+      if(Math.random() < success){
+        addEvent(time, `${tackler} makes a perfectly timed tackle to stop the attack!`);
+
         if(ratings[tackler] && stats[tackler]){
           stats[tackler].tackles++;
-          awardRating(tackler,0.15);
+          awardRating(tackler, 0.15);
         }
       }else{
-        addEvent(time,`${tackler} mistimes the challenge and the opposition gets away.`);
+        addEvent(time, `${tackler} mistimes the challenge and the opposition gets away.`);
       }
+    }else{
+      addEvent(time, `${tackler} makes a crucial challenge to stop your attack.`);
     }
 
+  // YELLOW CARDS
+  }else if(roll < 0.91){
+    const booked = home
+      ? choose([...defence, ...mids], "Your player")
+      : "Opponent defender";
+
+    bookPlayer(home, booked);
+
+  // RED CARDS
+  }else if(roll < 0.92){
+    const dismissed = home
+      ? choose([...defence, ...mids, ...attack], "Your player")
+      : "Opponent defender";
+
+    straightRed(home, dismissed);
+
+  // RECYCLE POSSESSION
   }else{
-    addEvent(time,`${team} recycle possession and try to build another attack.`);
+    addEvent(time, `${team} recycle possession and prepare another attack.`);
   }
 }
-
 
   function finishMatch(){
     if(matchFinished) return;
