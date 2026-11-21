@@ -1056,11 +1056,11 @@ function getFatigueRate(name){
     if(home){
       homeGoals++;
       scorers[scorer]=(scorers[scorer]||0)+1;
-      stats[scorer].goals++;
+     if (stats[scorer]) stats[scorer].goals++;
       awardRating(scorer,1.0);
       if(assist && ratings[assist]){
         assists[assist]=(assists[assist]||0)+1;
-        stats[assist].assists++;
+        if (stats[assist]) stats[assist].assists++;
         awardRating(assist,0.4);
       }
     }else{
@@ -1080,12 +1080,12 @@ function getFatigueRate(name){
 
     homeYellows++;
     yellowCounts[player]=(yellowCounts[player]||0)+1;
-    stats[player].yellow++;
+    if (stats[player]) stats[player].yellow++;
 
     if(yellowCounts[player]>=2){
       homeReds++;
       sentOff.add(player);
-      stats[player].red++;
+      if (stats[player]) stats[player].red++;
       awardRating(player,-1.0);
       addEvent(clockLabel(currentHalf,currentMinute),
         `🟨🟥 SECOND YELLOW! ${player} is sent off! ${homeName} must continue with fewer players.`);
@@ -1153,13 +1153,14 @@ function getFatigueRate(name){
   }
     }else if(roll<0.29){
       addEvent(time,`${scorer} gets a sight of goal but fires narrowly wide.`);
-      if(home) stats[scorer].shots++;
+      if(home && stats[scorer]) stats[scorer].shots++;
     }else if(roll<0.36){
       addEvent(time,`A brilliant save denies ${scorer}!`);
-      if(!home && keeper.length){
-        stats[choose(keeper,"Your goalkeeper")].saves++;
-        awardRating(choose(keeper,"Your goalkeeper"),0.3);
-      }
+     if(!home && keeper.length){
+  const savedBy = choose(keeper,"Your goalkeeper");
+  if(stats[savedBy]) stats[savedBy].saves++;
+  awardRating(savedBy,0.3);
+}
     }else if(roll<0.42){
       addEvent(time,`The ball strikes the post! ${team} are inches away.`);
   }else if(roll<0.49){
