@@ -706,6 +706,31 @@ function playMatch(){
   const sentOff = new Set();
   const substitutedOff = new Set();
   const usedPowerUps = new Set();
+  const matchStats = {
+  home: {
+    possession: 0,
+    shots: 0,
+    shotsOnTarget: 0,
+    shotsOffTarget: 0,
+    passesAttempted: 0,
+    passesCompleted: 0,
+    corners: 0,
+    fouls: 0
+  },
+  away: {
+    possession: 0,
+    shots: 0,
+    shotsOnTarget: 0,
+    shotsOffTarget: 0,
+    passesAttempted: 0,
+    passesCompleted: 0,
+    corners: 0,
+    fouls: 0
+  }
+};
+
+let possessionSeconds = { home: 0, away: 0 };
+let lastPossession = "home";
 
   let tactics = "Balanced";
   let halftimeShout = "";
@@ -716,6 +741,10 @@ function playMatch(){
   let nextEvent = 4 + Math.floor(Math.random() * 5);
   let currentHalf = 1;
   let currentMinute = 0;
+  function recordStat(team, stat, amount = 1) {
+  const side = team === true || team === "home" ? "home" : "away";
+  matchStats[side][stat] += amount;
+}
 
   const oppositionStrength = 55 + Math.random() * 35;
 
@@ -1120,6 +1149,7 @@ function generateEvent(){
   ));
 
   const home = Math.random()<homeChance;
+  lastPossession = home ? "home" : "away";
   const team = home ? homeName : awayName;
   const attack = groupPlayers("ATT");
   const mids = groupPlayers("MID");
@@ -1334,6 +1364,8 @@ function generateEvent(){
     activeMatchTimer=setInterval(()=>{
       minute++;
       currentMinute=minute;
+            possessionSeconds[lastPossession] += 1;
+      matchStats[lastPossession].possession += 1;
 
       if(minute>=nextEvent){
         generateEvent();
