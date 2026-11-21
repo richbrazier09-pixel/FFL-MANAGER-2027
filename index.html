@@ -1150,8 +1150,7 @@ function generateEvent(){
     0.5+(homeStrength-oppositionStrength)/180
   ));
 
-  const home = Math.random()<homeChance;
-  lastPossession = home ? "home" : "away";
+  const home = Math.random() < homeChance;
   const team = home ? homeName : awayName;
   const attack = groupPlayers("ATT");
   const mids = groupPlayers("MID");
@@ -1457,8 +1456,14 @@ function generateEvent(){
       minute++;
       currentMinute=minute;
            // Simulate possession changing naturally throughout the match
-if (Math.random() < 0.12) {
-    lastPossession = lastPossession === "home" ? "away" : "home";
+// Keep possession reasonably balanced, with a small strength advantage
+if (Math.random() < 0.30) {
+    const homePossessionChance = Math.max(
+        0.40,
+        Math.min(0.60, 0.50 + (getStrength().value - oppositionStrength) / 250)
+    );
+
+    lastPossession = Math.random() < homePossessionChance ? "home" : "away";
 }
 
 possessionSeconds[lastPossession] += 1;
