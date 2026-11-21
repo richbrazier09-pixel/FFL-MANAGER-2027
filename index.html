@@ -1100,6 +1100,7 @@ function getFatigueRate(name){
   }
 
   function bookPlayer(home,player){
+        recordStat(home, "fouls");
     if(!home){
       awayYellows++;
       addEvent(clockLabel(currentHalf,currentMinute),
@@ -1126,6 +1127,7 @@ function getFatigueRate(name){
   }
 
   function straightRed(home,player){
+        recordStat(home, "fouls");
     if(!home){
       awayReds++;
       addEvent(clockLabel(currentHalf,currentMinute),
@@ -1170,29 +1172,34 @@ function generateEvent(){
   if(roll<0.05){
     addEvent(time,`${team} keep possession and patiently search for space.`);
 
-  }else if(roll<0.18){
-    if(!home){
-      addEvent(time,`${team} work the ball wide and deliver a dangerous cross.`);
-    }else{
-      const passer = choose(mids,creator);
-      const passingSuccess = Math.min(
-        0.95,
-        0.75*getActionMultiplier(passer,"passing")
-      );
+ }else if(roll<0.18){
+    recordStat(home, "passesAttempted");
 
-      if(Math.random()<passingSuccess){
+    const passer = home ? choose(mids,creator) : "Opponent midfielder";
+    const passingSuccess = home
+      ? Math.min(0.95,0.75*getActionMultiplier(passer,"passing"))
+      : 0.8;
+
+    if(Math.random()<passingSuccess){
+      recordStat(home, "passesCompleted");
+      if(home){
         addEvent(time,`${passer} picks out a dangerous pass. ${scorer} receives the ball.`);
       }else{
-        addEvent(time,`${passer} attempts a pass but the opposition intercepts.`);
+        addEvent(time,`${team} work the ball wide and deliver a dangerous cross.`);
       }
+    }else{
+      addEvent(time,`${passer} attempts a pass but the opposition intercepts.`);
     }
 
-  }else if(roll<0.28){
+ }else if(roll<0.28){
     addEvent(time,`${scorer} gets a sight of goal but fires narrowly wide.`);
+    recordStat(home, "shots");
+    recordStat(home, "shotsOffTarget");
     if(home && stats[scorer]) stats[scorer].shots++;
-
   }else if(roll<0.37){
     addEvent(time,`A brilliant save denies ${scorer}!`);
+        recordStat(home, "shots");
+    recordStat(home, "shotsOnTarget");
     if(!home && keeper.length){
       const savedBy = choose(keeper,"Your goalkeeper");
       if(stats[savedBy]) stats[savedBy].saves++;
@@ -1201,12 +1208,25 @@ function generateEvent(){
 
   }else if(roll<0.40){
     addEvent(time,`The ball strikes the post! ${team} are inches away.`);
+        recordStat(home, "shots");
+    recordStat(home, "shotsOffTarget");
     if(home && stats[scorer]) stats[scorer].shots++;
 
-  }else if(roll<0.52){
+ }else if(roll<0.52){
+    recordStat(home, "shots");
     if(home && stats[scorer]) stats[scorer].shots++;
 
     const conversionChance = home
+      ? Math.min(0.95,0.82*getActionMultiplier(scorer,"shooting"))
+      : 0.82;
+
+    if(Math.random()<conversionChance){
+      recordStat(home, "shotsOnTarget");
+      addGoal(home,scorer,creator,"finishes a flowing move");
+    }else{
+      recordStat(home, "shotsOffTarget");
+      addEvent(time,`${scorer} gets the chance but cannot quite find the finish.`);
+    }
       ? Math.min(0.95,0.82*getActionMultiplier(scorer,"shooting"))
       : 0.82;
 
@@ -1217,6 +1237,7 @@ function generateEvent(){
     }
 
   }else if(roll<0.57){
+    recordStat(home, "shots");
     if(home && stats[scorer]) stats[scorer].shots++;
 
     const headerChance = home
@@ -1224,13 +1245,15 @@ function generateEvent(){
       : 0.82;
 
     if(Math.random()<headerChance){
+      recordStat(home, "shotsOnTarget");
       addGoal(home,scorer,creator,"powers home a header from a corner");
     }else{
+      recordStat(home, "shotsOffTarget");
       addEvent(time,`${scorer} rises for the header but sends it wide.`);
     }
-
   }else if(roll<0.63){
     addEvent(time,`🚩 Corner for ${team}. The delivery causes problems.`);
+        recordStat(home, "corners");
     if(powerEffects.deadBall && home && Math.random()<0.3){
       addGoal(true,scorer,creator,"scores from the boosted set piece");
     }
@@ -1242,6 +1265,9 @@ function generateEvent(){
     }
 
   }else if(roll<0.69){
+    recordStat(home, "shots");
+    recordStat(home, "shotsOnTarget");
+
     if(Math.random()<0.72){
       addGoal(home,scorer,creator,"converts the penalty");
     }else{
@@ -1322,6 +1348,23 @@ function generateEvent(){
     const motm = eligible.sort((a,b)=>ratings[b]-ratings[a])[0] || "No award";
     const motmRating = ratings[motm] ? ratings[motm].toFixed(1) : "—";
 
+    const totalPossession =
+      matchStats.home.possession + matchStats.away.possession;
+
+    const homePossession = totalPossession
+      ? Math.round(matchStats.home.possession / totalPossession * 100)
+      : 50;
+
+    const awayPossession = 100 - homePossession;
+
+    const homePassAccuracy = matchStats.home.passesAttempted
+      ? Math.round(matchStats.home.passesCompleted / matchStats.home.passesAttempted * 100)
+      : 0;
+
+    const awayPassAccuracy = matchStats.away.passesAttempted
+      ? Math.round(matchStats.away.passesCompleted / matchStats.away.passesAttempted * 100)
+      : 0;
+
     updateDisplay("FULL TIME");
 
     result.innerHTML += `
@@ -1331,20 +1374,77 @@ function generateEvent(){
         <p>${escapeHTML(homeName)} ${
           homeGoals>awayGoals?"WIN":homeGoals===awayGoals?"DRAW":"LOSE"
         }.</p>
+
+        <h3>📊 TEAM MATCH STATS</h3>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;text-align:center;color:white;">
+            <thead>
+              <tr style="border-bottom:1px solid #64756d;">
+                <th style="padding:8px;text-align:left;">Statistic</th>
+                <th style="padding:8px;">${escapeHTML(homeName)}</th>
+                <th style="padding:8px;">${escapeHTML(awayName)}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding:8px;text-align:left;">Possession</td>
+                <td>${homePossession}%</td>
+                <td>${awayPossession}%</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Shots</td>
+                <td>${matchStats.home.shots}</td>
+                <td>${matchStats.away.shots}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Shots on target</td>
+                <td>${matchStats.home.shotsOnTarget}</td>
+                <td>${matchStats.away.shotsOnTarget}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Shots off target</td>
+                <td>${matchStats.home.shotsOffTarget}</td>
+                <td>${matchStats.away.shotsOffTarget}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Passes completed</td>
+                <td>${matchStats.home.passesCompleted}/${matchStats.home.passesAttempted}</td>
+                <td>${matchStats.away.passesCompleted}/${matchStats.away.passesAttempted}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Pass accuracy</td>
+                <td>${homePassAccuracy}%</td>
+                <td>${awayPassAccuracy}%</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Corners</td>
+                <td>${matchStats.home.corners}</td>
+                <td>${matchStats.away.corners}</td>
+              </tr>
+              <tr>
+                <td style="padding:8px;text-align:left;">Fouls</td>
+                <td>${matchStats.home.fouls}</td>
+                <td>${matchStats.away.fouls}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <h3>Goalscorers</h3>
         <p>${Object.entries(scorers).map(([n,g])=>`${escapeHTML(n)} (${g})`).join(", ") || "No goalscorers"}.</p>
+
         <h3>🏆 MAN OF THE MATCH</h3>
         <h2 style="color:#e5bd55;">${escapeHTML(motm)}</h2>
         <p>Match rating: ${motmRating}/10</p>
+
         <h3>Player ratings</h3>
         ${Object.entries(ratings).map(([n,r])=>`
           <p>${escapeHTML(n)} — ${r.toFixed(1)}/10
           · Goals: ${stats[n].goals}
           · Assists: ${stats[n].assists}
-          · Tackles: ${stats[n].tackles}
-          · Saves: ${stats[n].saves}
-          · Cards: ${stats[n].yellow}Y ${stats[n].red}R</p>
+          · Saves: ${stats[n].saves}</p>
         `).join("")}
+
         <p>Players available at full-time: ${activeNames().length}</p>
         <p class="notice">Friendly demonstration only. Competitive results are not recorded.</p>
         <button class="primary" onclick="playMatch()">Play another friendly</button>
@@ -1352,8 +1452,7 @@ function generateEvent(){
     `;
 
     if(matchButton) matchButton.disabled=false;
-  }
-
+}
   function runHalf(half){
     currentHalf=half;
     let minute=0;
