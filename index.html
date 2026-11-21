@@ -1227,14 +1227,7 @@ function generateEvent(){
       recordStat(home, "shotsOffTarget");
       addEvent(time,`${scorer} gets the chance but cannot quite find the finish.`);
     }
-      ? Math.min(0.95,0.82*getActionMultiplier(scorer,"shooting"))
-      : 0.82;
-
-    if(Math.random()<conversionChance){
-      addGoal(home,scorer,creator,"finishes a flowing move");
-    }else{
-      addEvent(time,`${scorer} gets the chance but cannot quite find the finish.`);
-    }
+      
 
   }else if(roll<0.57){
     recordStat(home, "shots");
