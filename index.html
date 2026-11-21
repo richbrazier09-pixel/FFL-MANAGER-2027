@@ -1555,93 +1555,101 @@ function generateEvent(){
 
     if(matchButton) matchButton.disabled=false;
 }
-  function runHalf(half){
-    currentHalf=half;
-    let minute=0;
-    const added=half===1?addedFirst:addedSecond;
-    const target=45+added;
-    updateDisplay(half===1?"FIRST HALF":"SECOND HALF");
+  
+function runHalf(half){
+    currentHalf = half;
+    let minute = 0;
+    const added = half === 1 ? addedFirst : addedSecond;
+    const target = 45 + added;
 
-    activeMatchTimer=setInterval(()=>{
-      minute++;
-      currentMinute=minute;
-           // Simulate possession changing naturally throughout the match
-// Keep possession reasonably balanced, with a small strength advantage
-if (Math.random() < 0.30) {
-    const homePossessionChance = Math.max(
-        0.40,
-        Math.min(0.60, 0.50 + (getStrength().value - oppositionStrength) / 250)
-    );
+    updateDisplay(half === 1 ? "FIRST HALF" : "SECOND HALF");
 
-    lastPossession = Math.random() < homePossessionChance ? "home" : "away";
-}
+    activeMatchTimer = setInterval(() => {
+        minute++;
+        currentMinute = minute;
 
-possessionSeconds[lastPossession] += 1;
-matchStats[lastPossession].possession += 1;
+        // Calculate possession using squad strength.
+        // Possession is reassessed every simulated minute.
+        const strengthDifference = getStrength().value - oppositionStrength;
 
-// Simulate ordinary passing while a team has possession
-const passAttempts = 5 + Math.floor(Math.random() * 4);
+        const homePossessionChance = Math.max(
+            0.35,
+            Math.min(0.65, 0.50 + strengthDifference / 200)
+        );
 
-for (let pass = 0; pass < passAttempts; pass++) {
-    const passingPlayers = lastPossession === "home"
-        ? activeNames()
-        : ["Opponent midfielder", "Opponent defender", "Opponent winger"];
+        lastPossession = Math.random() < homePossessionChance
+            ? "home"
+            : "away";
 
-    const passer = choose(passingPlayers, "Midfielder");
+        possessionSeconds[lastPossession] += 1;
+        matchStats[lastPossession].possession += 1;
 
-    const successRate = lastPossession === "home"
-        ? Math.min(0.95, 0.78 * getActionMultiplier(passer, "passing"))
-        : 0.82;
+        // Generate a more realistic number of routine passes.
+        const passAttempts = 2 + Math.floor(Math.random() * 3);
 
-    recordStat(lastPossession, "passesAttempted");
+        for(let pass = 0; pass < passAttempts; pass++){
+            const passingPlayers = lastPossession === "home"
+                ? activeNames()
+                : [
+                    "Opponent midfielder",
+                    "Opponent defender",
+                    "Opponent winger"
+                ];
 
-    if (Math.random() < successRate) {
-        recordStat(lastPossession, "passesCompleted");
-    }
-}
-      
+            const passer = choose(passingPlayers, "Midfielder");
 
-      if(minute>=nextEvent){
-        generateEvent();
-       nextEvent+=3+Math.floor(Math.random()*3);
-      }
+            const successRate = lastPossession === "home"
+                ? Math.min(
+                    0.96,
+                    0.78 * getActionMultiplier(passer, "passing")
+                )
+                : 0.82;
 
-      if(powerEffects.adrenaline && half===2 && minute>25 && minute%8===0){
-        addEvent(clockLabel(half,minute),"Your team push forward with extra urgency.");
-      }
+            recordStat(lastPossession, "passesAttempted");
 
-      updateDisplay(half===1?"FIRST HALF":"SECOND HALF");
-
-      if(minute>=target){
-        clearInterval(activeMatchTimer);
-        activeMatchTimer=null;
-
-        if(half===1){
-          addEvent("HT","Half-time! The players head in for the break.");
-          halftimeOpen=true;
-          updateDisplay("HALF-TIME");
-        }else{
-          addEvent("FT","The final whistle blows!");
-          finishMatch();
+            if(Math.random() < successRate){
+                recordStat(lastPossession, "passesCompleted");
+            }
         }
-      }
-    },550);
-  }
 
-  const initialStrength=getStrength();
-  addEvent("KO","Kick-off! The match is underway.");
-  if(matchButton) matchButton.disabled=true;
+        // Generate match events.
+        if(minute >= nextEvent){
+            generateEvent();
+            nextEvent += 3 + Math.floor(Math.random() * 3);
+        }
 
-  if(initialStrength.missing>0){
-    addEvent("KO",`${initialStrength.missing} starting place(s) are empty. Your team will suffer a squad-size penalty.`);
-  }
-  if(initialStrength.misplaced>0){
-    addEvent("KO",`${initialStrength.misplaced} player(s) are out of position.`);
-  }
+        // Second-half adrenaline effect.
+        if(
+            powerEffects.adrenaline &&
+            half === 2 &&
+            minute > 25 &&
+            minute % 8 === 0
+        ){
+            addEvent(
+                clockLabel(half, minute),
+                "Your team push forward with extra urgency."
+            );
+        }
 
-  runHalf(1);
+        updateDisplay(half === 1 ? "FIRST HALF" : "SECOND HALF");
+
+        // Handle the end of each half.
+        if(minute >= target){
+            clearInterval(activeMatchTimer);
+            activeMatchTimer = null;
+
+            if(half === 1){
+                addEvent("HT", "Half-time! The players head in for the break.");
+                halftimeOpen = true;
+                updateDisplay("HALF-TIME");
+            }else{
+                addEvent("FT", "The final whistle blows!");
+                finishMatch();
+            }
+        }
+
+    }, 550);
 }
-
 
 updateHome();
 </script>
