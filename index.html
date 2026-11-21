@@ -1226,8 +1226,8 @@ function getFatigueRate(name){
 }
 }else if(roll<0.66){
   const booked = home
-    ? choose([...defence,...mids],"Your player");
-        : "Opponent defender";
+  ? choose([...defence,...mids],"Your player")
+  : "Opponent defender";
       bookPlayer(home,booked);
     }else if(roll<0.662){
       const dismissed = home
