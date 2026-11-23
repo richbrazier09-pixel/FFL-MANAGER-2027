@@ -14971,8 +14971,1672 @@ function fflGetStrengthAttribute(player, names, fallback) {
 window.fflGetStrengthAttribute =
     fflGetStrengthAttribute;
 
-console.log("FFL Block 39 loaded: attribute integration ready.");
-</script>
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 40
+   Match shot integration and outcome tracking
+========================================== */
+
+window.fflShotIntegration40 = {
+    enabled: true,
+    shotsProcessed: 0,
+    goals: 0,
+    saves: 0,
+    blocks: 0,
+    misses: 0
+};
+
+/* Reset integration stats */
+function fflResetShotIntegration40() {
+    window.fflShotIntegration40 = {
+        enabled: true,
+        shotsProcessed: 0,
+        goals: 0,
+        saves: 0,
+        blocks: 0,
+        misses: 0
+    };
+}
+
+/* Resolve a shot using the attribute system */
+function fflResolveMatchShot40(
+    attacker,
+    defender,
+    goalkeeper,
+    context
+) {
+    var result = window.fflResolveShotPreview39(
+        attacker,
+        defender,
+        goalkeeper,
+        context || {}
+    );
+
+    var stats = window.fflShotIntegration40;
+
+    stats.shotsProcessed++;
+
+    if (result.outcome === "goal") {
+        stats.goals++;
+    } else if (result.outcome === "save") {
+        stats.saves++;
+    } else if (result.outcome === "blocked") {
+        stats.blocks++;
+    } else {
+        stats.misses++;
+    }
+
+    return result;
+}
+
+/* Generate contextual commentary */
+function fflShotCommentary40(result, attacker) {
+    if (!result || !attacker) return "";
+
+    var name = attacker.name || "The attacker";
+
+    switch (result.outcome) {
+        case "goal":
+            return "GOAL! " + name +
+                " finds the back of the net!";
+
+        case "save":
+            return "Great save from the goalkeeper!";
+
+        case "blocked":
+            return "The defence gets in the way and blocks the shot!";
+
+        default:
+            return name + " fires wide!";
+    }
+}
+
+/* Create a safe goalkeeper selection */
+function fflFindGoalkeeper40(players) {
+    if (!Array.isArray(players)) return null;
+
+    return players.find(function(player) {
+        return player &&
+            String(player.position || "").toUpperCase() === "GK";
+    }) || players[0] || null;
+}
+
+/* Shot context helper */
+function fflCreateShotContext40(distance, angle, pressure) {
+    return {
+        distance: Number(distance || 18),
+        angle: Number(angle || 0),
+        pressure: Number(pressure || 0)
+    };
+}
+
+/* Testable simulation */
+function fflTestShot40(attacker, defender, goalkeeper, context) {
+    var result = fflResolveMatchShot40(
+        attacker,
+        defender,
+        goalkeeper,
+        context
+    );
+
+    return {
+        result: result,
+        commentary: fflShotCommentary40(result, attacker),
+        totals: Object.assign(
+            {},
+            window.fflShotIntegration40
+        )
+    };
+}
+
+/* Public functions */
+window.fflResetShotIntegration40 =
+    fflResetShotIntegration40;
+
+window.fflResolveMatchShot40 =
+    fflResolveMatchShot40;
+
+window.fflShotCommentary40 =
+    fflShotCommentary40;
+
+window.fflFindGoalkeeper40 =
+    fflFindGoalkeeper40;
+
+window.fflCreateShotContext40 =
+    fflCreateShotContext40;
+
+window.fflTestShot40 =
+    fflTestShot40;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 41
+   Match AI decision-making
+========================================== */
+
+function fflMatchAI41(match, team) {
+    if (!match || !team) return null;
+
+    var isHome = team === "home";
+    var players = isHome
+        ? match.homePlayers
+        : match.awayPlayers;
+
+    if (!Array.isArray(players) || !players.length) {
+        return null;
+    }
+
+    var ownScore = isHome
+        ? Number(match.homeScore || 0)
+        : Number(match.awayScore || 0);
+
+    var oppScore = isHome
+        ? Number(match.awayScore || 0)
+        : Number(match.homeScore || 0);
+
+    var minute = Number(match.minute || 0);
+    var difference = ownScore - oppScore;
+
+    var mentality = "balanced";
+    var pressing = "standard";
+    var risk = 0.5;
+
+    /* Score-aware mentality */
+    if (difference < 0 && minute >= 55) {
+        mentality = "attacking";
+        pressing = "high";
+        risk = 0.78;
+    } else if (difference > 0 && minute >= 75) {
+        mentality = "defensive";
+        pressing = "low";
+        risk = 0.25;
+    } else if (minute < 25) {
+        mentality = "balanced";
+        pressing = "standard";
+        risk = 0.48;
+    }
+
+    /* Adjust for stamina */
+    var averageStamina = players.reduce(function(total, player) {
+        return total + Number(
+            player.stamina !== undefined
+                ? player.stamina
+                : 100
+        );
+    }, 0) / players.length;
+
+    if (averageStamina < 60) {
+        pressing = "low";
+        risk = Math.max(0.15, risk - 0.12);
+    }
+
+    /* Identify key players */
+    var strongestAttacker = players
+        .filter(function(player) {
+            return !player.sentOff;
+        })
+        .sort(function(a, b) {
+            return fflCalculateAttackingAbility(b) -
+                   fflCalculateAttackingAbility(a);
+    })[0] || null;
+
+    var strongestDefender = players
+        .filter(function(player) {
+            return !player.sentOff;
+        })
+        .sort(function(a, b) {
+            return fflCalculateDefendingAbility(b) -
+                   fflCalculateDefendingAbility(a);
+    })[0] || null;
+
+    return {
+        mentality: mentality,
+        pressing: pressing,
+        risk: risk,
+        scoreDifference: difference,
+        minute: minute,
+        averageStamina: Math.round(averageStamina),
+        keyAttacker: strongestAttacker,
+        keyDefender: strongestDefender
+    };
+}
+
+/* AI match decisions */
+function fflGetAIDecision41(match, team) {
+    var ai = fflMatchAI41(match, team);
+
+    if (!ai) return null;
+
+    var decision = "balanced_play";
+
+    if (ai.mentality === "attacking") {
+        decision = "push_forward";
+    } else if (ai.mentality === "defensive") {
+        decision = "protect_lead";
+    }
+
+    if (ai.averageStamina < 45) {
+        decision = "conserve_energy";
+    }
+
+    return {
+        team: team,
+        mentality: ai.mentality,
+        pressing: ai.pressing,
+        decision: decision,
+        risk: ai.risk,
+        keyAttacker: ai.keyAttacker
+            ? ai.keyAttacker.name
+            : null,
+        keyDefender: ai.keyDefender
+            ? ai.keyDefender.name
+            : null
+    };
+}
+
+/* Public functions */
+window.fflMatchAI41 = fflMatchAI41;
+window.fflGetAIDecision41 = fflGetAIDecision41;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 42
+   Dynamic substitution intelligence
+========================================== */
+
+function fflGetSubRecommendations42(match, team) {
+    if (!match || !team) return [];
+
+    var players = team === "home"
+        ? match.homePlayers
+        : match.awayPlayers;
+
+    if (!Array.isArray(players)) return [];
+
+    var minute = Number(match.minute || 0);
+
+    if (minute < 45) return [];
+
+    return players
+        .filter(function(player) {
+            return player &&
+                !player.sentOff &&
+                player.position !== "GK";
+        })
+        .map(function(player) {
+            var stamina = Number(
+                player.stamina !== undefined
+                    ? player.stamina
+                    : 100
+            );
+
+            var rating = Number(
+                player.rating ||
+                player.overall ||
+                50
+            );
+
+            var performance = Number(
+                player.matchRating ||
+                player.performanceRating ||
+                rating
+            );
+
+            var urgency = 0;
+
+            if (stamina < 35) urgency += 45;
+            else if (stamina < 50) urgency += 30;
+            else if (stamina < 65) urgency += 15;
+
+            if (performance < 45) urgency += 20;
+            else if (performance < 55) urgency += 10;
+
+            if (minute >= 75) urgency += 15;
+
+            return {
+                player: player,
+                stamina: stamina,
+                performance: performance,
+                urgency: urgency
+            };
+        })
+        .filter(function(item) {
+            return item.urgency > 0;
+        })
+        .sort(function(a, b) {
+            return b.urgency - a.urgency;
+        })
+        .slice(0, 3);
+}
+
+/* Replacement selection */
+function fflGetBestReplacement42(match, team, outgoing) {
+    if (!match || !outgoing || typeof state === "undefined") {
+        return null;
+    }
+
+    var clubCards = state.cards || [];
+
+    var alreadyPlaying = (
+        team === "home"
+            ? match.homePlayers
+            : match.awayPlayers
+    ) || [];
+
+    var playingNames = alreadyPlaying.map(function(player) {
+        return player.name;
+    });
+
+    var candidates = clubCards.filter(function(card) {
+        return (
+            card.name !== outgoing.name &&
+            playingNames.indexOf(card.name) === -1
+        );
+    });
+
+    var outgoingPosition = String(
+        outgoing.position || ""
+    ).toUpperCase();
+
+    candidates = candidates.filter(function(card) {
+        var position = String(
+            card.position || ""
+        ).toUpperCase();
+
+        if (outgoingPosition === "GK") {
+            return position === "GK";
+        }
+
+        return position !== "GK";
+    });
+
+    candidates.sort(function(a, b) {
+        return Number(b.rating || b.overall || 0) -
+               Number(a.rating || a.overall || 0);
+    });
+
+    return candidates[0] || null;
+}
+
+/* Late-game tactical recommendation */
+function fflGetLateGameTactics42(match, team) {
+    var ai = window.fflMatchAI41(match, team);
+
+    if (!ai) return null;
+
+    var recommendation = {
+        mentality: ai.mentality,
+        pressing: ai.pressing,
+        reason: "Maintain current tactical balance."
+    };
+
+    if (ai.mentality === "attacking") {
+        recommendation.reason =
+            "Increase attacking intent to chase the result.";
+    }
+
+    if (ai.mentality === "defensive") {
+        recommendation.reason =
+            "Protect the lead and reduce unnecessary risk.";
+    }
+
+    if (ai.averageStamina < 50) {
+        recommendation.pressing = "low";
+        recommendation.reason +=
+            " Reduce pressing to preserve remaining energy.";
+    }
+
+    return recommendation;
+}
+
+/* Public functions */
+window.fflGetSubRecommendations42 =
+    fflGetSubRecommendations42;
+
+window.fflGetBestReplacement42 =
+    fflGetBestReplacement42;
+
+window.fflGetLateGameTactics42 =
+    fflGetLateGameTactics42;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 43
+   Live match AI recommendations
+========================================== */
+
+function fflEnsureAIPanel43() {
+    var screen = document.getElementById("matches");
+    if (!screen) return null;
+
+    var panel = document.getElementById("fflLiveAIPanel43");
+
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "fflLiveAIPanel43";
+        panel.className = "panel";
+        panel.style.marginTop = "14px";
+        panel.innerHTML =
+            '<h3>Match intelligence</h3>' +
+            '<div id="fflLiveAIContent43">' +
+            'AI recommendations will appear during a match.' +
+            '</div>';
+
+        var target =
+            document.getElementById("matchStatistics") || screen;
+
+        target.parentNode.insertBefore(
+            panel,
+            target.nextSibling
+        );
+    }
+
+    return panel;
+}
+
+function fflRenderAIPanel43() {
+    var panel = fflEnsureAIPanel43();
+    if (!panel) return;
+
+    var content = document.getElementById("fflLiveAIContent43");
+    if (!content) return;
+
+    var match = window.fflLiveMatch;
+
+    if (!match) {
+        content.textContent =
+            "Start a match to receive tactical recommendations.";
+        return;
+    }
+
+    var homeAI = window.fflGetAIDecision41
+        ? window.fflGetAIDecision41(match, "home")
+        : null;
+
+    var awayAI = window.fflGetAIDecision41
+        ? window.fflGetAIDecision41(match, "away")
+        : null;
+
+    var homeSubs = window.fflGetSubRecommendations42
+        ? window.fflGetSubRecommendations42(match, "home")
+        : [];
+
+    var awaySubs = window.fflGetSubRecommendations42
+        ? window.fflGetSubRecommendations42(match, "away")
+        : [];
+
+    function teamHTML(label, ai, recommendations) {
+        var html = "<h4>" + label + "</h4>";
+
+        if (!ai) {
+            return html + "<p>Team information unavailable.</p>";
+        }
+
+        html += "<p><strong>Suggested approach:</strong> " +
+            ai.decision.replace(/_/g, " ") + "</p>";
+
+        html += "<p><strong>Pressing:</strong> " +
+            ai.pressing +
+            " · <strong>Average stamina:</strong> " +
+            ai.averageStamina + "%</p>";
+
+        if (recommendations.length) {
+            html += "<p><strong>Players to consider substituting:</strong></p><ul>";
+
+            recommendations.forEach(function(item) {
+                var name = item.player.name || "Unnamed player";
+
+                html += "<li>" +
+                    name.replace(/[&<>"']/g, function(char) {
+                        return {
+                            "&": "&amp;",
+                            "<": "&lt;",
+                            ">": "&gt;",
+                            '"': "&quot;",
+                            "'": "&#39;"
+                        }[char];
+                    }) +
+                    " — stamina " + item.stamina +
+                    "%, urgency " + item.urgency +
+                    "</li>";
+            });
+
+            html += "</ul>";
+        } else {
+            html += "<p>No urgent substitution recommendation.</p>";
+        }
+
+        return html;
+    }
+
+    content.innerHTML =
+        teamHTML("Your team", homeAI, homeSubs) +
+        teamHTML("Opposition", awayAI, awaySubs);
+}
+
+/* Refresh the panel whenever match display refreshes */
+if (typeof window.fflUpdateMatchDisplay === "function") {
+    var fflOriginalUpdateDisplay43 =
+        window.fflUpdateMatchDisplay;
+
+    window.fflUpdateMatchDisplay = function() {
+        var result = fflOriginalUpdateDisplay43.apply(this, arguments);
+
+        try {
+            fflRenderAIPanel43();
+        } catch (error) {
+            console.warn("Match AI panel update failed:", error);
+        }
+
+        return result;
+    };
+}
+
+window.fflRenderAIPanel43 = fflRenderAIPanel43;
+
+/* Initial display */
+if (document.readyState === "loading") {
+    document.addEventListener(
+        "DOMContentLoaded",
+        fflRenderAIPanel43
+    );
+} else {
+    fflRenderAIPanel43();
+}
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 44
+   Weather and pitch conditions
+========================================== */
+
+var FFL_WEATHER_TYPES44 = [
+    {
+        id: "sunny",
+        name: "Sunny",
+        passing: 1.02,
+        stamina: 1.00,
+        control: 1.02
+    },
+    {
+        id: "cloudy",
+        name: "Cloudy",
+        passing: 1.00,
+        stamina: 1.00,
+        control: 1.00
+    },
+    {
+        id: "rain",
+        name: "Heavy rain",
+        passing: 0.94,
+        stamina: 1.04,
+        control: 0.93
+    },
+    {
+        id: "wind",
+        name: "Strong wind",
+        passing: 0.91,
+        stamina: 1.01,
+        control: 0.96
+    },
+    {
+        id: "cold",
+        name: "Cold conditions",
+        passing: 0.98,
+        stamina: 1.03,
+        control: 0.98
+    }
+];
+
+var FFL_PITCH_TYPES44 = [
+    {
+        id: "excellent",
+        name: "Excellent",
+        passing: 1.04,
+        control: 1.04
+    },
+    {
+        id: "good",
+        name: "Good",
+        passing: 1.00,
+        control: 1.00
+    },
+    {
+        id: "worn",
+        name: "Worn",
+        passing: 0.96,
+        control: 0.96
+    },
+    {
+        id: "poor",
+        name: "Poor",
+        passing: 0.91,
+        control: 0.92
+    }
+];
+
+function fflChooseWeather44() {
+    return FFL_WEATHER_TYPES44[
+        Math.floor(Math.random() * FFL_WEATHER_TYPES44.length)
+    ];
+}
+
+function fflChoosePitch44() {
+    return FFL_PITCH_TYPES44[
+        Math.floor(Math.random() * FFL_PITCH_TYPES44.length)
+    ];
+}
+
+function fflCreateMatchConditions44() {
+    return {
+        weather: fflChooseWeather44(),
+        pitch: fflChoosePitch44()
+    };
+}
+
+function fflGetConditionEffects44(match) {
+    var conditions = match && match.conditions;
+
+    if (!conditions) {
+        return {
+            passing: 1,
+            control: 1,
+            stamina: 1
+        };
+    }
+
+    var weather = conditions.weather || {};
+    var pitch = conditions.pitch || {};
+
+    return {
+        passing:
+            Number(weather.passing || 1) *
+            Number(pitch.passing || 1),
+
+        control:
+            Number(weather.control || 1) *
+            Number(pitch.control || 1),
+
+        stamina:
+            Number(weather.stamina || 1)
+    };
+}
+
+function fflRenderConditions44() {
+    var match = window.fflLiveMatch;
+    var target = document.getElementById("matchStatistics");
+
+    if (!target || !match) return;
+
+    var panel = document.getElementById("fflConditions44");
+
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "fflConditions44";
+        panel.className = "panel";
+        target.parentNode.insertBefore(panel, target.nextSibling);
+    }
+
+    var conditions = match.conditions;
+
+    if (!conditions) {
+        panel.textContent = "Match conditions unavailable.";
+        return;
+    }
+
+    panel.innerHTML =
+        "<h3>Match conditions</h3>" +
+        "<p>Weather: <strong>" +
+        conditions.weather.name +
+        "</strong></p>" +
+        "<p>Pitch: <strong>" +
+        conditions.pitch.name +
+        "</strong></p>";
+}
+
+/* Attach conditions to new friendly matches */
+if (typeof window.fflStartFriendly === "function") {
+    var fflOriginalStartFriendly44 =
+        window.fflStartFriendly;
+
+    window.fflStartFriendly = function() {
+        var result = fflOriginalStartFriendly44.apply(this, arguments);
+
+        if (window.fflLiveMatch) {
+            window.fflLiveMatch.conditions =
+                fflCreateMatchConditions44();
+
+            if (typeof save === "function") save();
+            fflRenderConditions44();
+        }
+
+        return result;
+    };
+}
+
+/* Refresh conditions display */
+if (typeof window.fflUpdateMatchDisplay === "function") {
+    var fflOriginalDisplay44 =
+        window.fflUpdateMatchDisplay;
+
+    window.fflUpdateMatchDisplay = function() {
+        var result = fflOriginalDisplay44.apply(this, arguments);
+
+        try {
+            fflRenderConditions44();
+        } catch (error) {
+            console.warn("Conditions display failed:", error);
+        }
+
+        return result;
+    };
+}
+
+window.fflCreateMatchConditions44 =
+    fflCreateMatchConditions44;
+
+window.fflGetConditionEffects44 =
+    fflGetConditionEffects44;
+
+window.fflRenderConditions44 =
+    fflRenderConditions44;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 45
+   Live match statistics dashboard
+========================================== */
+
+function fflEnsureStats45(match) {
+    if (!match) return null;
+
+    if (!match.stats) match.stats = {};
+
+    ["home", "away"].forEach(function(team) {
+        if (!match.stats[team]) {
+            match.stats[team] = {
+                shots: 0,
+                shotsOnTarget: 0,
+                goals: 0,
+                saves: 0,
+                blockedShots: 0,
+                passes: 0,
+                completedPasses: 0,
+                tackles: 0,
+                fouls: 0,
+                corners: 0,
+                offsides: 0
+            };
+        }
+    });
+
+    return match.stats;
+}
+
+function fflRecordStat45(match, team, stat, amount) {
+    var stats = fflEnsureStats45(match);
+
+    if (!stats || !stats[team]) return;
+
+    var allowed = [
+        "shots",
+        "shotsOnTarget",
+        "goals",
+        "saves",
+        "blockedShots",
+        "passes",
+        "completedPasses",
+        "tackles",
+        "fouls",
+        "corners",
+        "offsides"
+    ];
+
+    if (allowed.indexOf(stat) === -1) return;
+
+    stats[team][stat] = Math.max(
+        0,
+        Number(stats[team][stat] || 0) +
+        Number(amount || 1)
+    );
+}
+
+function fflGetStat45(match, team, stat) {
+    var stats = fflEnsureStats45(match);
+
+    if (!stats || !stats[team]) return 0;
+
+    return Number(stats[team][stat] || 0);
+}
+
+function fflGetPassingAccuracy45(match, team) {
+    var passes = fflGetStat45(match, team, "passes");
+    var completed = fflGetStat45(
+        match,
+        team,
+        "completedPasses"
+    );
+
+    if (!passes) return 0;
+
+    return Math.round((completed / passes) * 100);
+}
+
+function fflRenderStatistics45() {
+    var match = window.fflLiveMatch;
+    var target = document.getElementById("matchStatistics");
+
+    if (!match || !target) return;
+
+    var stats = fflEnsureStats45(match);
+
+    var home = stats.home;
+    var away = stats.away;
+
+    var rows = [
+        ["Shots", home.shots, away.shots],
+        ["On target", home.shotsOnTarget, away.shotsOnTarget],
+        ["Goals", home.goals, away.goals],
+        ["Saves", home.saves, away.saves],
+        ["Blocked shots", home.blockedShots, away.blockedShots],
+        ["Passes", home.passes, away.passes],
+        ["Passing accuracy",
+            fflGetPassingAccuracy45(match, "home") + "%",
+            fflGetPassingAccuracy45(match, "away") + "%"],
+        ["Tackles", home.tackles, away.tackles],
+        ["Fouls", home.fouls, away.fouls],
+        ["Corners", home.corners, away.corners],
+        ["Offsides", home.offsides, away.offsides]
+    ];
+
+    var panel = document.getElementById("fflStatsDashboard45");
+
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "fflStatsDashboard45";
+        panel.className = "panel";
+        target.parentNode.insertBefore(panel, target.nextSibling);
+    }
+
+    var html = "<h3>Match statistics</h3>";
+
+    html += "<div style='display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;font-size:13px'>";
+
+    rows.forEach(function(row) {
+        html +=
+            "<div style='padding:8px;background:rgba(120,120,120,.10);border-radius:8px'>" +
+            "<strong>" + row[1] + "</strong>" +
+            "<div>" + row[0] + "</div>" +
+            "<strong>" + row[2] + "</strong>" +
+            "</div>";
+    });
+
+    html += "</div>";
+
+    panel.innerHTML = html;
+}
+
+/* Refresh statistics with the match display */
+if (typeof window.fflUpdateMatchDisplay === "function") {
+    var fflOriginalDisplay45 =
+        window.fflUpdateMatchDisplay;
+
+    window.fflUpdateMatchDisplay = function() {
+        var result = fflOriginalDisplay45.apply(this, arguments);
+
+        try {
+            fflRenderStatistics45();
+        } catch (error) {
+            console.warn("Statistics dashboard update failed:", error);
+        }
+
+        return result;
+    };
+}
+
+window.fflRecordStat45 = fflRecordStat45;
+window.fflGetStat45 = fflGetStat45;
+window.fflGetPassingAccuracy45 = fflGetPassingAccuracy45;
+window.fflRenderStatistics45 = fflRenderStatistics45;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 46
+   Match event statistics integration
+========================================== */
+
+function fflGetMatchTeam46(match, player) {
+    if (!match || !player) return null;
+
+    if ((match.homePlayers || []).indexOf(player) !== -1) {
+        return "home";
+    }
+
+    if ((match.awayPlayers || []).indexOf(player) !== -1) {
+        return "away";
+    }
+
+    return null;
+}
+
+function fflRecordShotEvent46(match, attacker, outcome) {
+    var team = fflGetMatchTeam46(match, attacker);
+
+    if (!team) return false;
+
+    fflRecordStat45(match, team, "shots", 1);
+
+    if (outcome === "goal") {
+        fflRecordStat45(match, team, "shotsOnTarget", 1);
+        fflRecordStat45(match, team, "goals", 1);
+    } else if (outcome === "save") {
+        fflRecordStat45(match, team, "shotsOnTarget", 1);
+        fflRecordStat45(match, team, "saves", 0);
+
+        var defendingTeam = team === "home" ? "away" : "home";
+        fflRecordStat45(match, defendingTeam, "saves", 1);
+    } else if (outcome === "blocked") {
+        fflRecordStat45(match, team, "blockedShots", 1);
+    }
+
+    return true;
+}
+
+function fflRecordPassEvent46(match, player, completed) {
+    var team = fflGetMatchTeam46(match, player);
+
+    if (!team) return false;
+
+    fflRecordStat45(match, team, "passes", 1);
+
+    if (completed) {
+        fflRecordStat45(match, team, "completedPasses", 1);
+    }
+
+    return true;
+}
+
+function fflRecordDefensiveEvent46(match, player, type) {
+    var team = fflGetMatchTeam46(match, player);
+
+    if (!team) return false;
+
+    if (type === "tackle") {
+        fflRecordStat45(match, team, "tackles", 1);
+    } else if (type === "foul") {
+        fflRecordStat45(match, team, "fouls", 1);
+    } else if (type === "corner") {
+        fflRecordStat45(match, team, "corners", 1);
+    } else if (type === "offside") {
+        fflRecordStat45(match, team, "offsides", 1);
+    }
+
+    return true;
+}
+
+/* Attribute-based shot event helper */
+function fflProcessAttributeShot46(
+    match,
+    attacker,
+    defender,
+    goalkeeper,
+    context
+) {
+    if (!match || !attacker) return null;
+
+    var result = fflResolveMatchShot40(
+        attacker,
+        defender,
+        goalkeeper,
+        context || {}
+    );
+
+    fflRecordShotEvent46(
+        match,
+        attacker,
+        result.outcome
+    );
+
+    return result;
+}
+
+/* Public functions */
+window.fflGetMatchTeam46 = fflGetMatchTeam46;
+window.fflRecordShotEvent46 = fflRecordShotEvent46;
+window.fflRecordPassEvent46 = fflRecordPassEvent46;
+window.fflRecordDefensiveEvent46 = fflRecordDefensiveEvent46;
+window.fflProcessAttributeShot46 = fflProcessAttributeShot46;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 47
+   Player ratings and Man of the Match
+========================================== */
+
+function fflCalculatePerformanceRating47(player) {
+    if (!player) return 5.5;
+
+    var rating = 6.0;
+
+    var goals = Number(player.goals || 0);
+    var assists = Number(player.assists || 0);
+    var saves = Number(player.saves || 0);
+    var tackles = Number(player.tackles || 0);
+    var keyPasses = Number(player.keyPasses || 0);
+    var errors = Number(player.errors || 0);
+    var yellowCards = Number(player.yellowCards || 0);
+    var redCards = Number(player.redCards || 0);
+
+    rating += goals * 1.1;
+    rating += assists * 0.65;
+    rating += saves * 0.12;
+    rating += tackles * 0.08;
+    rating += keyPasses * 0.06;
+
+    rating -= errors * 0.35;
+    rating -= yellowCards * 0.25;
+    rating -= redCards * 1.5;
+
+    if (player.stamina !== undefined) {
+        rating += (Number(player.stamina) - 75) * 0.008;
+    }
+
+    if (player.sentOff) rating -= 1.5;
+
+    return Math.max(
+        3.0,
+        Math.min(10.0, Math.round(rating * 10) / 10)
+    );
+}
+
+function fflGetMatchPlayerRatings47(match) {
+    if (!match) return [];
+
+    var players = []
+        .concat(match.homePlayers || [])
+        .concat(match.awayPlayers || []);
+
+    return players
+        .filter(function(player) {
+            return player && !player.inactive;
+        })
+        .map(function(player) {
+            return {
+                player: player,
+                rating: fflCalculatePerformanceRating47(player),
+                team: fflGetMatchTeam46(match, player)
+            };
+        })
+        .sort(function(a, b) {
+            return b.rating - a.rating;
+        });
+}
+
+function fflGetManOfTheMatch47(match) {
+    var ratings = fflGetMatchPlayerRatings47(match);
+
+    if (!ratings.length) return null;
+
+    return ratings[0];
+}
+
+function fflRenderPlayerRatings47() {
+    var match = window.fflLiveMatch;
+    var target = document.getElementById("matchStatistics");
+
+    if (!match || !target) return;
+
+    var panel = document.getElementById("fflPlayerRatings47");
+
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "fflPlayerRatings47";
+        panel.className = "panel";
+        target.parentNode.insertBefore(panel, target.nextSibling);
+    }
+
+    var ratings = fflGetMatchPlayerRatings47(match);
+    var motm = fflGetManOfTheMatch47(match);
+
+    var html = "<h3>Player performances</h3>";
+
+    if (motm) {
+        html +=
+            "<p><strong>Current Man of the Match:</strong> " +
+            String(motm.player.name || "Player").replace(/[&<>"']/g, "") +
+            " — " + motm.rating.toFixed(1) + "/10</p>";
+    }
+
+    html += "<div style='display:grid;grid-template-columns:1fr 1fr;gap:7px'>";
+
+    ratings.slice(0, 12).forEach(function(item) {
+        var name = String(item.player.name || "Player").replace(/[&<>"']/g, "");
+
+        html +=
+            "<div style='padding:8px;border-radius:8px;background:rgba(120,120,120,.10)'>" +
+            "<strong>" + name + "</strong>" +
+            "<span style='float:right'>" +
+            item.rating.toFixed(1) + "</span></div>";
+    });
+
+    html += "</div>";
+
+    panel.innerHTML = html;
+}
+
+/* Refresh ratings with match display */
+if (typeof window.fflUpdateMatchDisplay === "function") {
+    var fflOriginalDisplay47 =
+        window.fflUpdateMatchDisplay;
+
+    window.fflUpdateMatchDisplay = function() {
+        var result = fflOriginalDisplay47.apply(this, arguments);
+
+        try {
+            fflRenderPlayerRatings47();
+        } catch (error) {
+            console.warn("Player ratings update failed:", error);
+        }
+
+        return result;
+    };
+}
+
+window.fflCalculatePerformanceRating47 =
+    fflCalculatePerformanceRating47;
+
+window.fflGetMatchPlayerRatings47 =
+    fflGetMatchPlayerRatings47;
+
+window.fflGetManOfTheMatch47 =
+    fflGetManOfTheMatch47;
+
+window.fflRenderPlayerRatings47 =
+    fflRenderPlayerRatings47;
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 48
+   Match engine integration and consistency
+========================================== */
+
+function fflValidateLiveMatch48(match) {
+    var errors = [];
+
+    if (!match) {
+        return {
+            valid: false,
+            errors: ["No active match found."]
+        };
+    }
+
+    if (!Array.isArray(match.homePlayers)) {
+        errors.push("Home team player list is missing.");
+    }
+
+    if (!Array.isArray(match.awayPlayers)) {
+        errors.push("Away team player list is missing.");
+    }
+
+    if (Number(match.homeScore) < 0 ||
+        Number(match.awayScore) < 0) {
+        errors.push("Match score cannot be negative.");
+    }
+
+    if (!Number.isFinite(Number(match.minute))) {
+        errors.push("Match clock is invalid.");
+    }
+
+    return {
+        valid: errors.length === 0,
+        errors: errors
+    };
+}
+
+function fflRefreshMatchSystems48() {
+    var match = window.fflLiveMatch;
+
+    if (!match) return false;
+
+    var validation = fflValidateLiveMatch48(match);
+
+    if (!validation.valid) {
+        console.warn(
+            "FFL match validation:",
+            validation.errors
+        );
+        return false;
+    }
+
+    try {
+        if (window.fflRenderAIPanel43) {
+            window.fflRenderAIPanel43();
+        }
+
+        if (window.fflRenderConditions44) {
+            window.fflRenderConditions44();
+        }
+
+        if (window.fflRenderStatistics45) {
+            window.fflRenderStatistics45();
+        }
+
+        if (window.fflRenderPlayerRatings47) {
+            window.fflRenderPlayerRatings47();
+        }
+
+        if (window.fflRenderStrengthComparison) {
+            window.fflRenderStrengthComparison();
+        }
+    } catch (error) {
+        console.error(
+            "FFL match dashboard refresh failed:",
+            error
+        );
+    }
+
+    return true;
+}
+
+/* Public validation and refresh helpers */
+window.fflValidateLiveMatch48 =
+    fflValidateLiveMatch48;
+
+window.fflRefreshMatchSystems48 =
+    fflRefreshMatchSystems48;
+
+/* Refresh after match display updates */
+if (typeof window.fflUpdateMatchDisplay === "function") {
+    var fflOriginalDisplay48 =
+        window.fflUpdateMatchDisplay;
+
+    window.fflUpdateMatchDisplay = function() {
+        var result = fflOriginalDisplay48.apply(this, arguments);
+
+        try {
+            fflRefreshMatchSystems48();
+        } catch (error) {
+            console.warn(
+                "FFL central match refresh failed:",
+                error
+            );
+        }
+
+        return result;
+    };
+}
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 49
+   League fixture interaction repair
+========================================== */
+
+function fflAttachLeagueFixtureActions49() {
+    var container = document.getElementById("leagueFixtures");
+
+    if (!container) return;
+
+    var fixtures = container.querySelectorAll(
+        "[data-league-fixture], .fixture-row, .league-fixture-row"
+    );
+
+    fixtures.forEach(function(element) {
+        if (element.dataset.fflBound49 === "true") return;
+
+        element.dataset.fflBound49 = "true";
+        element.style.cursor = "pointer";
+
+        element.addEventListener("click", function(event) {
+            var button = event.target.closest("button");
+
+            if (button) return;
+
+            var fixtureId =
+                element.getAttribute("data-league-fixture") ||
+                element.getAttribute("data-fixture-id");
+
+            if (!fixtureId) return;
+
+            if (typeof window.fflOpenLeagueFixture === "function") {
+                window.fflOpenLeagueFixture(fixtureId);
+            }
+        });
+    });
+}
+
+/* Ensure fixture IDs and actions are present in rendered markup */
+function fflRenderFixtureActions49() {
+    var container = document.getElementById("leagueFixtures");
+
+    if (!container) return;
+
+    container.querySelectorAll(".fixture-row, .league-fixture-row")
+        .forEach(function(element) {
+            if (
+                !element.hasAttribute("data-league-fixture") &&
+                !element.hasAttribute("data-fixture-id")
+            ) {
+                var button = element.querySelector(
+                    "[data-fixture-id], [data-league-fixture]"
+                );
+
+                if (button) {
+                    var id =
+                        button.getAttribute("data-fixture-id") ||
+                        button.getAttribute("data-league-fixture");
+
+                    if (id) {
+                        element.setAttribute("data-league-fixture", id);
+                    }
+                }
+            }
+        });
+
+    fflAttachLeagueFixtureActions49();
+}
+
+/* Wrap existing league week renderer */
+if (typeof window.fflRenderSelectedLeagueWeek === "function") {
+    var fflOriginalLeagueWeek49 =
+        window.fflRenderSelectedLeagueWeek;
+
+    window.fflRenderSelectedLeagueWeek = function() {
+        var result = fflOriginalLeagueWeek49.apply(this, arguments);
+
+        try {
+            fflRenderFixtureActions49();
+        } catch (error) {
+            console.warn("League fixture actions failed:", error);
+        }
+
+        return result;
+    };
+}
+
+/* Wrap the fixture schedule renderer */
+if (typeof window.fflRenderLeagueSchedule === "function") {
+    var fflOriginalLeagueSchedule49 =
+        window.fflRenderLeagueSchedule;
+
+    window.fflRenderLeagueSchedule = function() {
+        var result = fflOriginalLeagueSchedule49.apply(this, arguments);
+
+        try {
+            fflRenderFixtureActions49();
+        } catch (error) {
+            console.warn("League schedule actions failed:", error);
+        }
+
+        return result;
+    };
+}
+
+/* Public helpers */
+window.fflAttachLeagueFixtureActions49 =
+    fflAttachLeagueFixtureActions49;
+
+window.fflRenderFixtureActions49 =
+    fflRenderFixtureActions49;
+
+/* Initial setup */
+if (document.readyState === "loading") {
+    document.addEventListener(
+        "DOMContentLoaded",
+        fflRenderFixtureActions49
+    );
+} else {
+    fflRenderFixtureActions49();
+}
+
+
+<script>
+/* ==========================================
+   FFL MANAGER 2027 — BLOCK 50
+   Final integration and diagnostics
+========================================== */
+
+function fflRunFinalDiagnostics50() {
+    var checks = [];
+
+    function check(name, passed, detail) {
+        checks.push({
+            name: name,
+            passed: !!passed,
+            detail: detail || ""
+        });
+    }
+
+    check(
+        "Game state",
+        typeof state === "object" && state !== null,
+        "Local game state is available."
+    );
+
+    check(
+        "Player database",
+        Array.isArray(players),
+        "Player database is available."
+    );
+
+    check(
+        "Card collection",
+        !!(state && Array.isArray(state.cards)),
+        "Player cards are available."
+    );
+
+    check(
+        "Squad builder",
+        typeof window.renderSquad === "function",
+        "Squad rendering function is available."
+    );
+
+    check(
+        "Match engine",
+        typeof window.fflStartFriendly === "function",
+        "Friendly match start function is available."
+    );
+
+    check(
+        "Shot calculations",
+        typeof window.fflResolveShotPreview39 === "function",
+        "Attribute-based shot calculations are available."
+    );
+
+    check(
+        "Match statistics",
+        typeof window.fflRenderStatistics45 === "function",
+        "Match statistics dashboard is available."
+    );
+
+    check(
+        "Match AI",
+        typeof window.fflGetAIDecision41 === "function",
+        "Tactical AI is available."
+    );
+
+    check(
+        "Weather system",
+        typeof window.fflCreateMatchConditions44 === "function",
+        "Weather and pitch conditions are available."
+    );
+
+    check(
+        "League scheduler",
+        typeof window.fflGetLeagueWeek === "function",
+        "League schedule generator is available."
+    );
+
+    check(
+        "League validation",
+        typeof window.fflValidateLeagueFormat === "function",
+        "League format validator is available."
+    );
+
+    check(
+        "Cloud save",
+        typeof window.fflSaveCloud === "function",
+        "Cloud save function is present; this does not verify connectivity."
+    );
+
+    var leagueResult = null;
+
+    try {
+        if (
+            typeof window.fflGetLeagueWeek === "function" &&
+            typeof window.fflValidateLeagueFormat === "function"
+        ) {
+            var week = window.fflGetLeagueWeek(0);
+            leagueResult = window.fflValidateLeagueFormat(week);
+
+            check(
+                "26-club weekly schedule",
+                !!(leagueResult && leagueResult.valid),
+                leagueResult && leagueResult.errors
+                    ? leagueResult.errors.join(" ")
+                    : "League schedule validation completed."
+            );
+        }
+    } catch (error) {
+        check(
+            "26-club weekly schedule",
+            false,
+            error.message
+        );
+    }
+
+    var passed = checks.filter(function(item) {
+        return item.passed;
+    }).length;
+
+    var failed = checks.length - passed;
+
+    var report = {
+        total: checks.length,
+        passed: passed,
+        failed: failed,
+        checks: checks,
+        league: leagueResult,
+        generatedAt: new Date().toISOString()
+    };
+
+    window.fflFinalDiagnostics50 = report;
+
+    console.group("FFL MANAGER 2027 — FINAL DIAGNOSTICS");
+
+    checks.forEach(function(item) {
+        if (item.passed) {
+            console.log("PASS:", item.name, item.detail);
+        } else {
+            console.warn("CHECK:", item.name, item.detail);
+        }
+    });
+
+    console.log("Result:", passed + "/" + checks.length, "checks passed.");
+    console.groupEnd();
+
+    return report;
+}
+
+/* Add a diagnostics panel to the home screen */
+function fflRenderDiagnostics50() {
+    var home = document.getElementById("home");
+
+    if (!home) return;
+
+    var panel = document.getElementById("fflDiagnosticsPanel50");
+
+    if (!panel) {
+        panel = document.createElement("section");
+        panel.id = "fflDiagnosticsPanel50";
+        panel.className = "panel";
+        panel.style.marginTop = "14px";
+        home.appendChild(panel);
+    }
+
+    var report = window.fflFinalDiagnostics50 ||
+        fflRunFinalDiagnostics50();
+
+    var html = "<h3>Game system checks</h3>";
+
+    html += "<p><strong>" +
+        report.passed + " of " + report.total +
+        " checks passed</strong></p>";
+
+    html += "<div style='display:grid;gap:6px'>";
+
+    report.checks.forEach(function(item) {
+        html +=
+            "<div style='padding:8px;border-radius:7px;background:rgba(120,120,120,.10)'>" +
+            (item.passed ? "✓ " : "⚠ ") +
+            "<strong>" + item.name + "</strong>" +
+            "<div style='font-size:12px;opacity:.8'>" +
+            item.detail +
+            "</div></div>";
+    });
+
+    html += "</div>";
+
+    html +=
+        "<button type='button' id='fflRunDiagnosticsButton50' " +
+        "style='margin-top:10px;padding:9px 14px'>" +
+        "Run checks again</button>";
+
+    panel.innerHTML = html;
+
+    var button = document.getElementById(
+        "fflRunDiagnosticsButton50"
+    );
+
+    if (button) {
+        button.addEventListener("click", function() {
+            window.fflRunFinalDiagnostics50();
+            fflRenderDiagnostics50();
+        });
+    }
+}
+
+/* Public functions */
+window.fflRunFinalDiagnostics50 =
+    fflRunFinalDiagnostics50;
+
+window.fflRenderDiagnostics50 =
+    fflRenderDiagnostics50;
+
+/* Run after all page scripts have loaded */
+if (document.readyState === "loading") {
+    document.addEventListener(
+        "DOMContentLoaded",
+        function() {
+            window.fflRunFinalDiagnostics50();
+            window.fflRenderDiagnostics50();
+        }
+    );
+} else {
+    window.fflRunFinalDiagnostics50();
+    window.fflRenderDiagnostics50();
+}
+
+
+
+
+
+
+
+
+
+
+
 
 
 
